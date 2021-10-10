@@ -1,15 +1,13 @@
-import scientist as sc, sys
-
+import scientist as sc
 
 scientist = sc.DataScientist(None)
 replace = [["\n", " "]]
 threads = []
-#t = scientist.insert(open("./text.txt", mode='r').read(), "word", replacer=replace, startAsThread=True)
-#threads.append(t)
-t = scientist.insert(open("./eng.txt", mode='r').read(), "word", replacer=replace)
+t = scientist.insert(open("./example.txt", mode='r').read(), "word", replacer=replace)
 threads.append(t)
-#scientist.waitFinish(threads)
+# scientist.waitFinish(threads)
 words = scientist.get("word")
+print(words)
 word_count = 0
 same_words = []
 for word in words.copy():

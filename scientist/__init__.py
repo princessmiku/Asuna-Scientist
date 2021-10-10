@@ -2,7 +2,7 @@
     Example Text
     https://www.blindtextgenerator.de/
 """
-import itertools, sqlite3, threading
+import itertools, sqlite3, threading, re
 
 from .collection import Collection
 
@@ -78,7 +78,7 @@ class DataScientist:
         :param location: data path
         :return: returns data
         """
-        location: list = location.split(".")
+        location: list = re.split(r"[.]+\b(?<!\\.)", location)
         data: any = self.data
         loc: any
         for step in location:
@@ -94,7 +94,7 @@ class DataScientist:
         :param data:
         :return:
         """
-        location: list = location.split(".")
+        location: list = re.split(r"[.]+\b(?<!\\.)", location)
         save = self.data
         for count, step in enumerate(location):
             if count != len(location) - 1:
@@ -109,7 +109,7 @@ class DataScientist:
         :param location: data path
         :return: returns data
         """
-        location: list = location.split(".")
+        location: list = re.split(r"[.]+\b(?<!\\.)", location)
         data: any = self.data.copy()
         if not data.__contains__(location[0]): return False
         loc: any
@@ -143,7 +143,7 @@ class DataScientist:
                 text = text.replace(re[0], re[1])
             words: list = text.split(" ")
             for word in words:
-                word = word.replace(".", "\&!")
+                word = word.replace(".", "\.")
                 if not self.exists(f"{save_under}.{word}"):
                     col = self.Collection(word, save_under)
                 else:
