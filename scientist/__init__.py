@@ -2,6 +2,8 @@
     Example Text
     https://www.blindtextgenerator.de/
 """
+import collections
+import difflib
 import itertools, sqlite3, threading, re
 
 from .collection import Collection
@@ -116,9 +118,6 @@ class DataScientist:
         for step in location:
             if not data.__contains__(step): return False
             data = data[step]
-            if not isinstance(data, dict):
-                if step != data[-1]: return False
-                break
         return True
 
     def save(self) -> bool:
@@ -156,13 +155,50 @@ class DataScientist:
             thread = threading.Thread(target=run, args=(text,), daemon=True)
             thread.start()
             return thread
-        ## wichtig ! Threading
-        #client = Client(client_socket, address)
-        #clients.append(client)
-        #thread = threading.Thread(target=client.listen, daemon=True)
-        #client.thread = thread
-        #client.send("connection accept")
-        #client.thread.run()
+
+    def addAInsert(self, text: str, save_under: str = "collection") -> Collection:
+        word = text.replace(".", "\.")
+        if not self.exists(f"{save_under}.{word}"):
+            col = self.Collection(word, save_under)
+        else:
+            col = self.get(f"{save_under}.{word}.self")
+        col.addCount()
+        return col
+
+    def getMatch(self, search: str, location: str) -> [bool, str]:
+        """
+        Suche nach einen Match in der angegeben location, die suche muss nicht einstimmig geschrieben sein,
+        es wird ein passendes ergebnis zu finden. Um ein absolutes match zu finden sollte man exists nutzen.
+
+        :param search:
+        :param location:
+        :return: Das Match oder None wenn nix gefunden wurde
+        """
+        get_dict: dict = self.get(location)
+        if not isinstance(get_dict, dict): return None
+        search_match: list = difflib.get_close_matches(search, get_dict.keys(), 1)
+        if search_match: return search_match[0]
+        return None
+
+    def getCollectionsByRelevanceHigherThen(self, relevance: int, location: str) -> list:
+        if not self.exists(location): return []
+        objects: dict = self.get(location)
+        is_relevance: list = []
+        for o in objects:
+            if not self.exists(f"{location}.{o}.self"): continue
+            col: Collection = self.get(f"{location}.{o}.self")
+            if col.relevance >= relevance: is_relevance.append(col)
+        return is_relevance
+
+    def getCollectionsByLastRelevanceCount(self, relevance: int, location: str) -> list:
+        if not self.exists(location): return []
+        objects: dict = self.get(location)
+        is_relevance: list = []
+        for o in objects:
+            if not self.exists(f"{location}.{o}.self"): continue
+            col: Collection = self.get(f"{location}.{o}.self")
+            if col.get_last_relevance_count() >= relevance: is_relevance.append(col)
+        return is_relevance
 
     def waitFinish(self, threadList: list):
         """
