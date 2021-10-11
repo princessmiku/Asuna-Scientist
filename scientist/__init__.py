@@ -276,56 +276,56 @@ class DataScientist:
         threads = []
         for col in data:
             def run():
-                searched = to_search.split(" ")
+                searched = set(to_search.split(" "))
                 split_name = col.name.split(" ")
                 search_text = col.get_search_text()
-                step_is_in_Searching = [True, True, True]  # name, category, other
+                founded_names = []
+                founded_category = []
+                founded_others = []
                 for s in searched:
-                    if step_is_in_Searching[0]:  # search the name
-                        match = difflib.get_close_matches(s, split_name)
-                        if match:
-                            matches["name"].append(col)
-                            step_is_in_Searching[0] = False
-                    if step_is_in_Searching[1]:  # search category
-                        if col.have_category_searching(s):
-                            matches["category"].append(col)
-                            step_is_in_Searching[1] = False
-                    if step_is_in_Searching[2]:
-                        if difflib.get_close_matches(s, search_text):  # search in search text
-                            if not matches["other"].__contains__(col):
-                                matches["other"].append(col)
-                                step_is_in_Searching[2] = False
-                    if not step_is_in_Searching.__contains__(True):
-                        break
-
-
+                    match = difflib.get_close_matches(s, split_name)  # search in name
+                    if match:
+                        founded_names += match
+                    if col.have_category_searching(s):  # search in category
+                        founded_category.append(s)
+                    match = difflib.get_close_matches(s, search_text)  # search in search text
+                    if match:
+                        founded_others.append(match)
+                if len(founded_names) / len(split_name) >= 0.5:
+                    matches["name"].append(col)
+                if founded_category:
+                    matches["category"].append(col)
+                if len(founded_others) / len(search_text) >= 0.15:
+                    matches["other"].append(col)
             # Starten als Thread für die schnellere suche
             thread = threading.Thread(target=run, daemon=True)
             thread.start()
             threads.append(thread)
         self.waitFinish(threads)
-
         relevance_one = []
         relevance_two = []
         relevance_three = []
 
         threads.clear()
+
         def matches_for_name():
             for col in matches["name"]:
                 if matches["name"].__contains__(col) and matches["category"].__contains__(col) and matches["other"].__contains__(col):
                     relevance_one.append(col)
                 elif matches["name"].__contains__(col) and matches["category"].__contains__(col) and not matches["other"].__contains__(col):
                     relevance_one.append(col)
-                elif matches["name"].__contains__(col) and not matches["category"].__contains__(col) and not matches["other"].__contains__(col):
+                elif matches["name"].__contains__(col):
                     relevance_two.append(col)
         threads.append(threading.Thread(target=matches_for_name, daemon=True))
+
         def matches_for_category():
             for col in matches["category"]:
                 if not matches["name"].__contains__(col) and matches["category"].__contains__(col) and matches["other"].__contains__(col):
                     relevance_two.append(col)
                 elif not matches["name"].__contains__(col) and matches["category"].__contains__(col) and not matches["other"].__contains__(col):
                     relevance_two.append(col)
-        threads.append(threading.Thread(target=matches_for_category, daemon=True))#
+        threads.append(threading.Thread(target=matches_for_category, daemon=True))
+
         def matches_for_other():
             for col in matches["other"]:
                 if not matches["name"].__contains__(col) and not matches["category"].__contains__(col) and not matches["other"].__contains__(col):
@@ -335,13 +335,11 @@ class DataScientist:
             thread.start()
         self.waitFinish(threads)
 
-
-
         def sortFunc(col: Collection):
             return col.relevance_count()
         relevance_one.sort(key=sortFunc, reverse=True)
-        relevance_one.sort(key=sortFunc, reverse=True)
-        relevance_one.sort(key=sortFunc, reverse=True)
+        relevance_two.sort(key=sortFunc, reverse=True)
+        relevance_three.sort(key=sortFunc, reverse=True)
         sorted_return: list = relevance_one + relevance_two + relevance_three
         return sorted_return
 
