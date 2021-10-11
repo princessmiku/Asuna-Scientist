@@ -156,16 +156,16 @@ class DataScientist:
             thread.start()
             return thread
 
-    def addAInsert(self, text: str, save_under: str = "collection", **kwargs) -> Collection:
+    def addAInsert(self, text: str, save_under: str = "collection") -> Collection:
         word = text.replace(".", "\.")
         if not self.exists(f"{save_under}.{word}"):
-            col = self.Collection(word, save_under, **kwargs)
+            col = self.Collection(word, save_under)
         else:
             col = self.get(f"{save_under}.{word}.self")
         col.addCount()
         return col
 
-    def getMatch(self, search: str, location: [str, list], max_matches: int = 1) -> [bool, str]:
+    def getMatch(self, search: str, location: str) -> [bool, str]:
         """
         Suche nach einen Match in der angegeben location, die suche muss nicht einstimmig geschrieben sein,
         es wird ein passendes ergebnis zu finden. Um ein absolutes match zu finden sollte man exists nutzen.
@@ -174,79 +174,35 @@ class DataScientist:
         :param location:
         :return: Das Match oder None wenn nix gefunden wurde
         """
-        if isinstance(location, str):
-            get_dict: dict = self.get(location)
-            if not isinstance(get_dict, dict): return []
-            search_match: list = difflib.get_close_matches(search, get_dict.keys(), max_matches)
-            if search_match:
-                return_list = []
-                for match in search_match:
-                    return_list.append(get_dict[match])
-                return return_list
-        elif isinstance(location, list):
-            get_dict: dict = {}
-            col: Collection
-            for col in location:
-                get_dict[col.name] = col
-            search_match: list = difflib.get_close_matches(search, get_dict.keys(), max_matches)
-            if search_match:
-                return_list = []
-                for match in search_match:
-                    return_list.append(get_dict[match])
-                return return_list
-        return []
+        get_dict: dict = self.get(location)
+        if not isinstance(get_dict, dict): return None
+        search_match: list = difflib.get_close_matches(search, get_dict.keys(), 1)
+        if search_match: return search_match[0]
+        return None
 
-    def getCollectionsByRelevanceHigherThen(self, relevance: int, location: [str, list]) -> list:
+    def getCollectionsByRelevanceHigherThen(self, relevance: int, location: str) -> list:
+        if not self.exists(location): return []
+        objects: dict = self.get(location)
         is_relevance: list = []
-        if isinstance(location, str):
-            if not self.exists(location): return []
-            objects: dict = self.get(location)
-            for o in objects:
-                if not self.exists(f"{location}.{o}.self"): continue
-                col: Collection = self.get(f"{location}.{o}.self")
-                if col.relevance >= relevance: is_relevance.append(col)
-        elif isinstance(location, list):
-            col: Collection
-            for col in location:
-                if col.relevance >= relevance: is_relevance.append(col)
+        for o in objects:
+            if not self.exists(f"{location}.{o}.self"): continue
+            col: Collection = self.get(f"{location}.{o}.self")
+            if col.relevance >= relevance: is_relevance.append(col)
         return is_relevance
 
-    def getCollectionsByLastRelevanceCount(self, relevance: int, location: [str, list]) -> list:
+    def getCollectionsByLastRelevanceCount(self, relevance: int, location: str) -> list:
+        if not self.exists(location): return []
+        objects: dict = self.get(location)
         is_relevance: list = []
-        if isinstance(location, str):
-            if not self.exists(location): return []
-            objects: dict = self.get(location)
-            is_relevance: list = []
-            for o in objects:
-                if not self.exists(f"{location}.{o}.self"): continue
-                col: Collection = self.get(f"{location}.{o}.self")
-                if col.get_last_relevance_count() >= relevance: is_relevance.append(col)
-        elif isinstance(location, list):
-            col: Collection
-            for col in location:
-                if col.get_last_relevance_count() >= relevance: is_relevance.append(col)
+        for o in objects:
+            if not self.exists(f"{location}.{o}.self"): continue
+            col: Collection = self.get(f"{location}.{o}.self")
+            if col.get_last_relevance_count() >= relevance: is_relevance.append(col)
         return is_relevance
-
-    def getCollectionsByCategory(self, category: [str, list], location: [str, list]) -> list:
-        category_objects: list = []
-        if isinstance(location, str):
-            if not self.exists(location): return []
-            objects: dict = self.get(location)
-            if isinstance(category, str): category = [category]
-            for o in objects:
-                if not self.exists(f"{location}.{o}.self"): continue
-                col: Collection = self.get(f"{location}.{o}.self")
-                if col.have_category(category): category_objects.append(col)
-        elif isinstance(location, list):
-            if isinstance(category, str): category = [category]
-            col: Collection
-            for col in location:
-                if col.have_category(category): category_objects.append(col)
-        return category_objects
-
 
     def waitFinish(self, threadList: list):
         """
+
         :param threadList:
         :return:
         """
