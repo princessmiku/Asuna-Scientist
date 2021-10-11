@@ -5,14 +5,33 @@ class Collection:
     dataScientist = None
     max_last_relevance = 10
 
-    def __init__(self, name: str, save_under: str = "collection"):
+    def __init__(self, name: str, save_under: str = "collection", category: list = []):
         self.name: str = name
         self.save_under = save_under
         self.count: int = 0
         self.relevance: int = 0
+        self.forced_relevance: bool = False
+        self.ignore: bool = False
         self.all_delivered_relevance: int = 0
         self.last_relevance: list = []
+        self.category: list = category
         self.dataScientist.set(f"{self.save_under}.{self.name}.self", self)
+
+    def add_category(self, category_name: str):
+        if not self.category.__contains__(category_name): self.category.append(category_name)
+
+    def remove_category(self, category_name: str):
+        if self.category.__contains__(category_name): self.category.remove(category_name)
+
+    def have_category(self, category_names: [str, list]) -> bool:
+        if isinstance(category_names, str): return self.category.__contains__(category_names)
+        for item in category_names:
+            if not self.category.__contains__(item): return False
+        return True
+
+
+    def is_forced_relevance(self) -> bool:
+        return self.forced_relevance
 
     def get_name(self):
         return self.name.replace("\.", ".")
