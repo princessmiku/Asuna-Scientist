@@ -156,16 +156,16 @@ class DataScientist:
             thread.start()
             return thread
 
-    def addAInsert(self, text: str, save_under: str = "collection") -> Collection:
+    def addAInsert(self, text: str, save_under: str = "collection", **kwargs) -> Collection:
         word = text.replace(".", "\.")
         if not self.exists(f"{save_under}.{word}"):
-            col = self.Collection(word, save_under)
+            col = self.Collection(word, save_under, **kwargs)
         else:
             col = self.get(f"{save_under}.{word}.self")
         col.addCount()
         return col
 
-    def getMatch(self, search: str, location: str) -> [bool, str]:
+    def getMatch(self, search: str, location: [str, list], max_matches: int = 1) -> [bool, str]:
         """
         Suche nach einen Match in der angegeben location, die suche muss nicht einstimmig geschrieben sein,
         es wird ein passendes ergebnis zu finden. Um ein absolutes match zu finden sollte man exists nutzen.
@@ -174,35 +174,179 @@ class DataScientist:
         :param location:
         :return: Das Match oder None wenn nix gefunden wurde
         """
-        get_dict: dict = self.get(location)
-        if not isinstance(get_dict, dict): return None
-        search_match: list = difflib.get_close_matches(search, get_dict.keys(), 1)
-        if search_match: return search_match[0]
-        return None
+        if isinstance(location, str):
+            get_dict: dict = self.get(location)
+            if not isinstance(get_dict, dict): return []
+            search_match: list = difflib.get_close_matches(search, get_dict.keys(), max_matches)
+            if search_match:
+                return_list = []
+                for match in search_match:
+                    return_list.append(get_dict[match])
+                return return_list
+        elif isinstance(location, list):
+            get_dict: dict = {}
+            col: Collection
+            for col in location:
+                get_dict[col.name] = col
+            search_match: list = difflib.get_close_matches(search, get_dict.keys(), max_matches)
+            if search_match:
+                return_list = []
+                for match in search_match:
+                    return_list.append(get_dict[match])
+                return return_list
+        return []
 
-    def getCollectionsByRelevanceHigherThen(self, relevance: int, location: str) -> list:
-        if not self.exists(location): return []
-        objects: dict = self.get(location)
+    def getCollectionsByRelevanceHigherThen(self, relevance: int, location: [str, list]) -> list:
         is_relevance: list = []
-        for o in objects:
-            if not self.exists(f"{location}.{o}.self"): continue
-            col: Collection = self.get(f"{location}.{o}.self")
-            if col.relevance >= relevance: is_relevance.append(col)
+        if isinstance(location, str):
+            if not self.exists(location): return []
+            objects: dict = self.get(location)
+            for o in objects:
+                if not self.exists(f"{location}.{o}.self"): continue
+                col: Collection = self.get(f"{location}.{o}.self")
+                if col.relevance >= relevance: is_relevance.append(col)
+        elif isinstance(location, list):
+            col: Collection
+            for col in location:
+                if col.relevance >= relevance: is_relevance.append(col)
         return is_relevance
 
-    def getCollectionsByLastRelevanceCount(self, relevance: int, location: str) -> list:
-        if not self.exists(location): return []
-        objects: dict = self.get(location)
+    def getCollectionsByLastRelevanceCount(self, relevance: int, location: [str, list]) -> list:
         is_relevance: list = []
-        for o in objects:
-            if not self.exists(f"{location}.{o}.self"): continue
-            col: Collection = self.get(f"{location}.{o}.self")
-            if col.get_last_relevance_count() >= relevance: is_relevance.append(col)
+        if isinstance(location, str):
+            if not self.exists(location): return []
+            objects: dict = self.get(location)
+            is_relevance: list = []
+            for o in objects:
+                if not self.exists(f"{location}.{o}.self"): continue
+                col: Collection = self.get(f"{location}.{o}.self")
+                if col.get_last_relevance_count() >= relevance: is_relevance.append(col)
+        elif isinstance(location, list):
+            col: Collection
+            for col in location:
+                if col.get_last_relevance_count() >= relevance: is_relevance.append(col)
         return is_relevance
+
+    def getCollectionsByCategory(self, category: [str, list], location: [str, list]) -> list:
+        category_objects: list = []
+        if isinstance(location, str):
+            if not self.exists(location): return []
+            objects: dict = self.get(location)
+            if isinstance(category, str): category = [category]
+            for o in objects:
+                if not self.exists(f"{location}.{o}.self"): continue
+                col: Collection = self.get(f"{location}.{o}.self")
+                if col.have_category(category): category_objects.append(col)
+        elif isinstance(location, list):
+            if isinstance(category, str): category = [category]
+            col: Collection
+            for col in location:
+                if col.have_category(category): category_objects.append(col)
+        return category_objects
+
+    def getSearchCollections(self, to_search: str, location: [str, list]) -> dict:
+        """
+        Diese funktion sucht aus angegeben den parametern das passende ergebnis
+        - name
+        - category
+        - search text
+
+        Sortiert nach der Allgemeinen Relevanz des Produktes und angeschlagen den Suchkriterien
+
+        Sollte ein Produkt auf ignore stehen wird dieses Systematisch ausgeschlossen
+        :param to_search:
+        :param location:
+        :return: eine liste mit den gefundenen Collections
+        """
+
+        if isinstance(location, list):
+            data = location
+        else:
+            get_dict = self.get(location)
+            data = []
+            for x in get_dict:
+                if self.exists(f"{location}.{x}.self"): data.append(self.get(f"{location}.{x}.self"))
+
+        matches = {
+            "name": [],
+            "category": [],
+            "other": []
+        }
+        col: Collection
+        threads = []
+        for col in data:
+            def run():
+                searched = to_search.split(" ")
+                split_name = col.name.split(" ")
+                search_text = col.get_search_text()
+                step_is_in_Searching = [True, True, True]  # name, category, other
+                for s in searched:
+                    if step_is_in_Searching[0]:  # search the name
+                        match = difflib.get_close_matches(s, split_name)
+                        if match:
+                            matches["name"].append(col)
+                            step_is_in_Searching[0] = False
+                    if step_is_in_Searching[1]:  # search category
+                        if col.have_category_searching(s):
+                            matches["category"].append(col)
+                            step_is_in_Searching[1] = False
+                    if step_is_in_Searching[2]:
+                        if difflib.get_close_matches(s, search_text):  # search in search text
+                            if not matches["other"].__contains__(col):
+                                matches["other"].append(col)
+                                step_is_in_Searching[2] = False
+                    if not step_is_in_Searching.__contains__(True):
+                        break
+
+
+            # Starten als Thread für die schnellere suche
+            thread = threading.Thread(target=run, daemon=True)
+            thread.start()
+            threads.append(thread)
+        self.waitFinish(threads)
+
+        relevance_one = []
+        relevance_two = []
+        relevance_three = []
+
+        threads.clear()
+        def matches_for_name():
+            for col in matches["name"]:
+                if matches["name"].__contains__(col) and matches["category"].__contains__(col) and matches["other"].__contains__(col):
+                    relevance_one.append(col)
+                elif matches["name"].__contains__(col) and matches["category"].__contains__(col) and not matches["other"].__contains__(col):
+                    relevance_one.append(col)
+                elif matches["name"].__contains__(col) and not matches["category"].__contains__(col) and not matches["other"].__contains__(col):
+                    relevance_two.append(col)
+        threads.append(threading.Thread(target=matches_for_name, daemon=True))
+        def matches_for_category():
+            for col in matches["category"]:
+                if not matches["name"].__contains__(col) and matches["category"].__contains__(col) and matches["other"].__contains__(col):
+                    relevance_two.append(col)
+                elif not matches["name"].__contains__(col) and matches["category"].__contains__(col) and not matches["other"].__contains__(col):
+                    relevance_two.append(col)
+        threads.append(threading.Thread(target=matches_for_category, daemon=True))#
+        def matches_for_other():
+            for col in matches["other"]:
+                if not matches["name"].__contains__(col) and not matches["category"].__contains__(col) and not matches["other"].__contains__(col):
+                    relevance_three.append(col)
+        threads.append(threading.Thread(target=matches_for_other, daemon=True))
+        for thread in threads:
+            thread.start()
+        self.waitFinish(threads)
+
+
+
+        def sortFunc(col: Collection):
+            return col.relevance_count()
+        relevance_one.sort(key=sortFunc, reverse=True)
+        relevance_one.sort(key=sortFunc, reverse=True)
+        relevance_one.sort(key=sortFunc, reverse=True)
+        sorted_return: list = relevance_one + relevance_two + relevance_three
+        return sorted_return
 
     def waitFinish(self, threadList: list):
         """
-
         :param threadList:
         :return:
         """
