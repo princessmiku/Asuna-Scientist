@@ -1,12 +1,16 @@
+"""
+    Diese Main ist nur zum testen, die main hat keine verbindung zur eigentlichen lib
+"""
+
 import collections
 import difflib
 import random
 import sys
 import threading
+import time
 
 import scientist as sc
-
-
+start_time = time.time()
 scientist = sc.DataScientist(None)
 
 # add data
@@ -60,7 +64,6 @@ videos: dict = {
     }
 }
 
-
 for o in videos:
     video = videos[o].copy()
     col: scientist.Collection = scientist.addAInsert(video["name"], save_under="video", category=video["category"])
@@ -72,10 +75,12 @@ for o in videos:
     col.set_id(o)
 
 
-matches = scientist.getSearchCollections("Programmieren", "video")
+matches = scientist.getSearchCollections("Held der", "video")
 m: scientist.Collection
 print("------------------------------------------------------------------------")
 for m in matches:
     print("Video Title", m.get_name())
     print("URL", videos[m.get_id()]["url"])
     print("------------------------------------------------------------------------")
+
+print(time.time() - start_time)

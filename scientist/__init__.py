@@ -15,7 +15,7 @@ class DatabaseConnector:
         self.database: sqlite3.Connection = sqlite3.connect(location)
         self.autoCommit: bool = autoCommit
 
-    def get(self, table: str, columns: [str, list], where: list[str, (str, int)] = False) -> list:
+    def get(self, table: str, columns: [str, list], where: list = False) -> list:
         # build the sql str
         sql_str: str = f"SELECT "
         if isinstance(columns, list):
@@ -30,7 +30,7 @@ class DatabaseConnector:
                 sql_str += f" WHERE {str(where[1])}"
         return self.database.execute(sql_str).fetchall()
 
-    def set(self, table: str, columns: [str, list], values: [str, list], where: list[str, (str, int)] = False):
+    def set(self, table: str, columns: [str, list], values: [str, list], where: list = False):
         # build the sql str
         sql_str: str = f"UPDATE {table} SET "
         if isinstance(columns, list):
@@ -116,8 +116,11 @@ class DataScientist:
         if not data.__contains__(location[0]): return False
         loc: any
         for step in location:
-            if not data.__contains__(step): return False
-            data = data[step]
+            try:
+                if not data.__contains__(step): return False
+                data = data[step]
+            except AttributeError:
+                return False
         return True
 
     def save(self) -> bool:
@@ -129,7 +132,6 @@ class DataScientist:
 
     def insert(self, text: str, save_under: str = "collection", replacer: list = [], startAsThread: bool = False) -> [None, threading.Thread]:
         """
-
         :param startAsThread:
         :param replacer:
         :param save_under:
@@ -163,6 +165,9 @@ class DataScientist:
         else:
             col = self.get(f"{save_under}.{word}.self")
         col.addCount()
+        if kwargs.__contains__("category"):
+            for cat in kwargs["category"]:
+                col.add_category(cat)
         return col
 
     def getMatch(self, search: str, location: [str, list], max_matches: int = 1) -> [bool, str]:
@@ -181,7 +186,7 @@ class DataScientist:
             if search_match:
                 return_list = []
                 for match in search_match:
-                    return_list.append(get_dict[match])
+                    return_list.append(get_dict[match]["self"])
                 return return_list
         elif isinstance(location, list):
             get_dict: dict = {}
@@ -244,7 +249,7 @@ class DataScientist:
                 if col.have_category(category): category_objects.append(col)
         return category_objects
 
-    def getSearchCollections(self, to_search: str, location: [str, list]) -> dict:
+    def getSearchCollections(self, to_search: str, location: [str, list]) -> list:
         """
         Diese funktion sucht aus angegeben den parametern das passende ergebnis
         - name
@@ -262,6 +267,7 @@ class DataScientist:
         if isinstance(location, list):
             data = location
         else:
+            if not self.exists(location): return []
             get_dict = self.get(location)
             data = []
             for x in get_dict:
@@ -295,6 +301,9 @@ class DataScientist:
                     matches["name"].append(col)
                 if founded_category:
                     matches["category"].append(col)
+                else:
+                    if col.have_category_searching(to_search):
+                        matches["category"].append(col)
                 if len(founded_others) / len(search_text) >= 0.15:
                     matches["other"].append(col)
             # Starten als Thread für die schnellere suche

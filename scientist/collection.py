@@ -89,5 +89,4 @@ class Collection:
 
     def addCount(self, add: int = 1) -> int:
         self.count += add
-        self.dataScientist.set(f"{self.save_under}.{self.name}.count", self.count)
         return self.count
