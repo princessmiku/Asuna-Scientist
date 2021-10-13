@@ -13,6 +13,8 @@ import scientist as sc
 start_time = time.time()
 scientist = sc.DataScientist(None)
 
+scientist.insert()
+
 # add data
 videos: dict = {
     1: {
