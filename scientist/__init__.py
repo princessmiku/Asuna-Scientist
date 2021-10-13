@@ -123,6 +123,29 @@ class DataScientist:
                 return False
         return True
 
+    def remove(self, location: str):
+        """
+        Remove Data
+        :param location: data path
+        """
+
+        location: list = re.split(r"[.]+\b(?<!\\.)", location)
+        data: any = self.data
+        loc: any
+        for count, step in enumerate(location):
+            if not isinstance(data, dict):
+                if count + 1 == len(location):
+                    data.pop(step)
+                    break
+                else:
+                    return
+            if not data.__contains__(step): return
+            if count + 1 == len(location):
+                data.pop(step)
+                break
+            data = data[step]
+
+
     def save(self) -> bool:
         """
         Save your data
@@ -351,6 +374,41 @@ class DataScientist:
         relevance_three.sort(key=sortFunc, reverse=True)
         sorted_return: list = relevance_one + relevance_two + relevance_three
         return sorted_return
+
+    def getSearchCollectionsWithCounterCheck(self, to_search, location_one: [str, list],
+        location_two: [str, list]) -> list:
+        """
+        Search Collections mit der möglichkeit einer personalisierten suche
+        durch entfernung irrelevanter Ergebnisse in einem Abgleich
+        :param to_search: Was wird gesucht
+        :param location_one: Datensatz für die Filterung
+        :param location_two: Allgemeiner Datensatz
+        :return:
+        """
+        if isinstance(location_one, list):
+            data_one: list = location_one
+        else:
+            if not self.exists(location_one): return []
+            get_dict: dict = self.get(location_one)
+            data_one: list = []
+            for x in get_dict:
+                if self.exists(f"{location_one}.{x}.self"): data_one.append(self.get(f"{location_one}.{x}.self"))
+
+        col_names_two: list = []
+        if isinstance(location_two, list):
+            col: Collection
+            for col in data_one:
+                col_names_two.append(col.name)
+        else:
+            if not self.exists(location_two): return []
+            col_names_two: list = list(self.get(location_two).keys())
+
+        check_data = []
+        data: Collection
+        for data in data_one:
+            if data.ignore: continue
+            if col_names_two.__contains__(data.name): check_data.append(data)
+        return self.getSearchCollections(to_search, check_data)
 
     def waitFinish(self, threadList: list):
         """

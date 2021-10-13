@@ -13,6 +13,8 @@ import scientist as sc
 start_time = time.time()
 scientist = sc.DataScientist(None)
 
+scientist.insert()
+
 # add data
 videos: dict = {
     1: {
@@ -74,8 +76,17 @@ for o in videos:
     col.add_search_text(video["description"])
     col.set_id(o)
 
+for o in videos:
+    video = videos[o].copy()
+    col: scientist.Collection = scientist.addAInsert(video["name"], save_under="my_video", category=video["category"])
+    col.set_relevance(video["relevance"])
+    col.addCount(video["watches"])
+    for author in video["author"]:
+        col.add_category(author)
+    col.add_search_text(video["description"])
+    col.set_id(o)
 
-matches = scientist.getSearchCollections("Held der", "video")
+matches = scientist.getSearchCollectionsWithCounterCheck("webserver", "my_video", "video")
 m: scientist.Collection
 print("------------------------------------------------------------------------")
 for m in matches:
