@@ -3,6 +3,20 @@
 Ein Script welches später Daten analysieren und passende ergebnisse sowie matches für Nutzer ausgeben soll
 
 
+Das ist Version 1.0, aktuell ist eine neuere Version (Version 2.0) in Arbeit die um einiges besser in Sachen Performance sein soll, damit sie auch sehr große Daten mengen in einer viel kürzeren Zeit abgleichen und durchsuchen kann.
+
+Außerdem soll sie individueller und mit einen besseren Algorithmus arbeiten als Version 1.0
+Es soll daher möglich sein direkt sie darauf auszulegen das diese anhand der Ergebnisse lernen kann um bessere Vorschläge zu geben.
+
+Folgende Libarys sind in Planung verwendet zu werden:
+- Numpy
+- Pandas
+- Tensorflow
+
+Als auch überlege ich es so aus zulegen das es in CPython für eine höhere Performance laufen wird.
+
+-----
+
 ### Speichern
 
 Aktuell funktioniert das Speichern der daten nicht, dieses müsste man selber unternehmen 
@@ -168,24 +182,3 @@ Andere Funktionen sind auf eigene gefahr zu nutzen, sie werden aber deine daten 
 beschädigen bei falscher nutzung.
 
 In späterer Zeit wird auch hier genauer eingegangen auf alles
-
-
-
-.
-
-.
-
-.
-
-.
-
-.
-
-.
-
-.
-
-.
-
-.
-.
