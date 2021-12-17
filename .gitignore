@@ -1,3 +1,6 @@
 *.txt
 /.idea
 /__pycache__
+/discordBot/save/
+/discordBot/hiddenStuff/
+/log/

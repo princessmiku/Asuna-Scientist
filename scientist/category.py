@@ -3,25 +3,30 @@ Setup categories names
 
 example categories
 """
+
+import logging
 from typing import Optional
 
 # 0 is the default category when no is defined or found
-import pandas
 
 categories = {
-    0: "unidentified",
-    1: "entertainment",
-    2: "technology",
-    3: "learning"
+    "id": range(4),
+    "name": ["unidentified", "entertainment", "technology", "learning"]
 }
 
 
 class Category:
+    logger: logging.Logger = None
 
-    def __init__(self, data: pandas.DataFrame):
-        self.__data: pandas.DataFrame = data
+    def __init__(self, data: dict):
+        self.logger.debug("Init Categorys")
+        self.__data: dict = data
 
     def getData(self):
+        """
+        get The Private Data
+        :return:
+        """
         return self.__data
 
     def addCategory(self, name: str) -> int:

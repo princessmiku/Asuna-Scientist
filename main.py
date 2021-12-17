@@ -9,10 +9,17 @@ import sys
 import threading
 import time
 
+
 import scientist as sc
+from scientist import Category, LogSettings, Collection
+
 start_time = time.time()
 scientist = sc.DataScientist()
-print(scientist.getData()["collection"])
+scientist.insert("Hello from the other side, can you hear me from the other building at the top")
+data: list = scientist.getData()["collection"].values()
+col: Collection
+for col in data:
+    print(col.name)
 # add data
 videos: dict = {
     1: {

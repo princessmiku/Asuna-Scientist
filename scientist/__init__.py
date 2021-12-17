@@ -1,128 +1,278 @@
 """
-    Example Text
+    Data Scientist V2
+    Created by Miku
+
+    Version: 2.0.0 Alpha
+    Github: https://github.com/princessmiku
+    Project on Github: https://github.com/princessmiku/Scientist
+
+    Example Text generator
     https://www.blindtextgenerator.de/
 """
 # Own library's
-from . import collection, user
+from .collection import Collection, getBaseCollectionDataDict
+from .user import User
+from .logSettings import LogSettings
+from .category import Category
+from .record import Record
+from .databaseConnector import DatabaseConnector
+
+# import python stuff
+import difflib, itertools, sqlite3, threading, re, os, logging, random, time
+from typing import Optional
+
 # external library's
-import difflib, itertools, sqlite3, threading, re, pandas as pd
-
-import pandas
 
 
-class DatabaseConnector:
-
-    def __init__(self, location: str, autoCommit: bool = True):
-        self.database: sqlite3.Connection = sqlite3.connect(location)
-        self.autoCommit: bool = autoCommit
-
-    def get(self, table: str, columns: [str, list], where: list = False) -> list:
-        # build the sql str
-        sql_str: str = f"SELECT "
-        if isinstance(columns, list):
-            sql_str += ", ".join(columns)
-        else:
-            sql_str += columns
-        sql_str += f" FROM {table}"
-        if where:
-            if isinstance(where[1], str):
-                sql_str += f" WHERE '{where[1]}'"
-            else:
-                sql_str += f" WHERE {str(where[1])}"
-        return self.database.execute(sql_str).fetchall()
-
-    def set(self, table: str, columns: [str, list], values: [str, list], where: list = False):
-        # build the sql str
-        sql_str: str = f"UPDATE {table} SET "
-        if isinstance(columns, list):
-            saving_values: list = []
-            for z in zip(columns, values):
-                if isinstance(z[0], str):
-                    saving_values.append(f"{z[0]} = '{z[1]}'")
-                else:
-                    saving_values.append(f"{z[0]} = {z[1]}")
-            sql_str += ", ".join(saving_values)
-        else:
-            sql_str += columns + ", " + values
-        sql_str += f" FROM {table}"
-        if where:
-            if isinstance(where[1], str):
-                sql_str += f" WHERE '{where[1]}'"
-            else:
-                sql_str += f" WHERE {str(where[1])}"
-        self.database.execute(sql_str).fetchall()
-
-        # commit automatically new data
-        if self.autoCommit: self.commit()
-
-    def commit(self):
-        self.database.commit()
+_version = "2.0.0 Alpha"
 
 
 class DataScientist:
 
-    def __init__(self):
+    # Simple default text for the top of the log
+    __defaultLogTextStart = f"> - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n" \
+                            f"| Data Scientist V2\n" \
+                            f"| Created by Miku\n| \n" \
+                            f"| Version: {_version}\n" \
+                            f"| Github: https://github.com/princessmiku\n" \
+                            f"| Project on Github: https://github.com/princessmiku/Scientist\n" \
+                            f"> - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n"
+    logger: logging.Logger = None
+
+    def __init__(self, _logSettings: LogSettings = None):
+        """
+        Init the brain of Scientist
+        :param _logSettings: Log settings, when None it will use the default
+        """
+
+        # check if not logger set
+        if self.logger is None or LogSettings is not None:
+            # check if set log settings
+            if _logSettings is None:
+                # setup default log settings
+                _logSettings = LogSettings("s2")
+                _logSettings.setFilemode("w")
+            # setup the logger
+            self.updateLogger(_logSettings)
+        self.logger.info("Init DataScientist")
+
         self.__data: dict = {}
+        # generate default structure
         self.__generate_default_structure()
+
+        # complete init
+        self.logger.info("Init complete")
 
     def __generate_default_structure(self):
         """
         This function generate the default used structure for saving
         :return:
         """
-
-        self.__data["collection"] = pandas.DataFrame(collection.defaultStructure)
-        self.__data["user"] = pandas.DataFrame(user.defaultStructure)
-
-    def newSaveLocation(self, name: str, data: dict = None) -> None:
-        self.__data[name] = pandas.DataFrame(data)
-
-    # data manager
+        self.logger.debug("Generate default structure")
+        self.__data["collection"] = {}
+        self.__data["user"] = {}
 
     def get(self, location: str) -> [int, str, bool]:
-        #location: list = re.split(r"[.]+\b(?<!\\.)", location)
-        pass
+        # get data from a location
+        self.logger.debug("Get data from " + location)
+        location: list = re.split(r"[.]+\b(?<!\\.)", location)
+        data: any = self.__data
+        loc: any
+        for step in location:
+            if not isinstance(data, dict): break
+            if not data.__contains__(step): return None
+            data = data[step]
+        return data
 
     def set(self, location: str, data: [int, str, bool]):
-        #location: list = re.split(r"[.]+\b(?<!\\.)", location)
-        pass
+        # set data on location
+        self.logger.debug("Set data at " + location + " data: " + str(data))
+        location: list = re.split(r"[.]+\b(?<!\\.)", location)
+        save = self.__data
+        for count, step in enumerate(location):
+            if count != len(location) - 1:
+                if not save.__contains__(step): save[step] = {}
+                save = save[step]
+            else:
+                save[step] = data
 
     def exists(self, location: str) -> bool:
-        #location: list = re.split(r"[.]+\b(?<!\\.)", location)
-        pass
-
+        # check if data exits at location
+        self.logger.debug("Check if exists data at " + location)
+        location: list = re.split(r"[.]+\b(?<!\\.)", location)
+        data: any = self.__data.copy()
+        if not data.__contains__(location[0]): return False
+        loc: any
+        for step in location:
+            try:
+                if not data.__contains__(step): return False
+                data = data[step]
+            except AttributeError:
+                return False
+        return True
 
     def remove(self, location: str):
-        #location: list = re.split(r"[.]+\b(?<!\\.)", location)
-        pass
+        # remove a location with data
+        self.logger.debug("Remove location " + location)
+
+        location: list = re.split(r"[.]+\b(?<!\\.)", location)
+        data: any = self.__data
+        loc: any
+        for count, step in enumerate(location):
+            if not isinstance(data, dict):
+                if count + 1 == len(location):
+                    data.pop(step)
+                    break
+                else:
+                    return
+            if not data.__contains__(step): return
+            if count + 1 == len(location):
+                data.pop(step)
+                break
+            data = data[step]
 
     # core
 
-    def insert(self):
-        pass
+    def insert(self, text: str, startAsThread: bool = False, replacer=None) -> Optional[threading.Thread]:
+        """
+        Insert a big text in the search engine, it will separate every word for searching it.
+        :param text: insert text
+        :param startAsThread: should it start as thread for speed up?
+        :param replacer: Replace before insert, like str.replace(), list format is [["a", "b"], ["c", "d"]]
+        :return:
+        """
+
+        # check if give replace
+        if replacer is None:
+            replacer = []
+
+        # target thread def
+        def run(_text: str):
+            self.logger.debug("Insert text width a len of " + str(len(text)) + " characters")
+            # replace
+            for replace in replacer:
+                _text = _text.replace(replace[0], replace[1])
+            # setup the word list via split
+            words: list = text.split(" ")
+            word: str
+            for word in words:
+                # if a word ends with a point, remove it
+                if word.endswith((".", ",", "!", "?")):
+                    word = word[:-1]
+                word = word.replace(".", "\n")
+                if not self.exists(f"collection.{word}"):
+                    self.insertCollection(Collection(getBaseCollectionDataDict(word)))
+                col = self.get(f"collection.{word}")
+                col.addCount()
+
+        # check if should start as thread
+        if not startAsThread:
+            run(text)
+        else:
+            self.logger.debug("Start text insertion as a thread")
+            thread = threading.Thread(target=run, args=(text, ), daemon=True)
+            thread.start()
+            return thread
+
+    def insertCollection(self, col: Collection):
+        """
+        Add insert a collection, its overwrite if collection already exists
+        :param col:
+        :return:
+        """
+        self.logger.debug("Insert Collection named \"" + col.name + "\"")
+        # set the collection
+        self.set(f"collection.{col.name}", col)
 
     def addElement(self):
+        # add a single element to the search
+        self.logger.debug("Add element ")
         pass
 
     def removeElement(self):
+        # remove a single element
+        self.logger.debug("Remove element ")
         pass
+
+    def insertRecord(self, _record: Record) -> threading.Thread:
+        """
+        Insert the finish record for learn the algorithm
+        This Function work as a thread for maximum speed
+        :param _record:
+        :return: the working thread
+        """
+
+        def run(_record: Record):
+            pass
+
+        self.logger.debug("init and start thread in insertRecord for search text \"" + _record.searchText + "\"")
+        thread = threading.Thread(target=run, args=(_record, ), daemon=True)
+        thread.start()
+        return thread
 
     # getter setter
     def getData(self) -> dict:
+        # get all data of this class
+        self.logger.debug("Get ALL data")
         return self.__data
 
     # extras
 
     def save(self) -> bool:
-        pass
+        # save all data
+        self.logger.info("SAVE")
+        return True
 
-    @staticmethod
-    def waitFinish(threadList: list):
+    def waitFinish(self, threadList: list):
         """
         This function is a easy way for waiting that the threads are finished
         :param threadList: a list with threads
         :return:
         """
+        threadIdentifikator: int = random.randint(100000, 9999999)
+        self.logger.debug(f"[{str(threadIdentifikator)}] Start waiting on {str(len(threadList))} threads")
         t: threading.Thread
+        # join all thread and listen is finish
         for t in threadList:
             t.join()
+        self.logger.debug(f"[{str(threadIdentifikator)}] Finish waiting on threads")
+
+    def updateLogger(self, _logSettings: LogSettings):
+        """
+        Update the log modul for ALL
+        :param _logSettings:
+        :return:
+        """
+        if self.logger is not None:
+            self.logger.warning("Setup a new Logging module")
+
+        # get the path of the log
+        logPath: str = _logSettings.filepath.rsplit("/", 1)[0]
+        # check if the folder exists when not create the folder
+        if not os.path.exists(logPath):
+            os.mkdir(logPath)
+        # check if a logging file exists when not create a default log file layout
+        if not os.path.isfile(_logSettings.filepath):
+            with open(_logSettings.filepath, mode=_logSettings.filemode) as f:
+                f.write(self.__defaultLogTextStart)
+                f.close()
+        elif _logSettings.filemode == "w":
+            with open(_logSettings.filepath, mode=_logSettings.filemode) as f:
+                f.write(self.__defaultLogTextStart)
+                f.close()
+        # init the log config on the logger
+        _logSettings.initConfig()
+        self.logger = _logSettings.logger
+        # open the log file, enter the start of the new beginning, ignore log layout
+        with open(_logSettings.filepath, mode='a') as f:
+            f.write(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] Starting a new log\n\n")
+            f.close()
+
+        # Set the logger
+        Category.logger = self.logger
+        Collection.logger = self.logger
+        DatabaseConnector.logger = self.logger
+        Record.logger = self.logger
+
+        # finish
+        self.logger.debug("Logging module successfully loaded")
