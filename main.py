@@ -11,15 +11,17 @@ import time
 
 
 import scientist as sc
-from scientist import Category, LogSettings, Collection
+from scientist import Category, LogSettings, Collection, databaseConnector
 
 start_time = time.time()
-scientist = sc.DataScientist()
+scientist = sc.DataScientist(databaseConnector.DatabaseConnector("./log/test.db", True))
 scientist.insert("Hello from the other side, can you hear me from the other building at the top")
 data: list = scientist.getData()["collection"].values()
 col: Collection
+scientist.recreateIndex()
+print(scientist.get("index"))
 for col in data:
-    print(col.name)
+    print(col.name, col.count)
 # add data
 videos: dict = {
     1: {

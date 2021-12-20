@@ -10,6 +10,10 @@
     https://www.blindtextgenerator.de/
 """
 # Own library's
+import json
+
+import polars
+
 from .collection import Collection, getBaseCollectionDataDict
 from .user import User
 from .logSettings import LogSettings
@@ -18,13 +22,35 @@ from .record import Record
 from .databaseConnector import DatabaseConnector
 
 # import python stuff
-import difflib, itertools, sqlite3, threading, re, os, logging, random, time
+import difflib, itertools, sqlite3, threading, re, os, logging, random, time, functools
 from typing import Optional
 
 # external added library's
 
 
 _version = "2.0.0 Alpha"
+
+# stuff?
+
+
+def threadsafe_function(fn):
+    """
+    decorator making sure that the decorated function is thread safe
+    Quelle: https://stackoverflow.com/questions/1072821/is-modifying-a-class-variable-in-python-threadsafe
+    """
+
+    lock = threading.Lock()
+
+    def new(*args, **kwargs):
+        lock.acquire()
+        try:
+            r = fn(*args, **kwargs)
+        except Exception as e:
+            raise e
+        finally:
+            lock.release()
+        return r
+    return new
 
 
 class DataScientist:
@@ -82,6 +108,8 @@ class DataScientist:
         """
         self.logger.debug("Generate default structure")
         self.__data["collection"] = {}
+        # check if json exists // vorübergehend
+        self.__data["index"] = polars.DataFrame()
         self.__data["user"] = {}
 
     def get(self, location: str) -> [int, str, bool]:
@@ -143,6 +171,19 @@ class DataScientist:
                 break
             data = data[step]
 
+    @threadsafe_function
+    def getNextAvailableID(self, location: str) -> int:
+        if not self.exists(location + ".0"):
+            dummy = getBaseCollectionDataDict(0, "Dummy")
+            dummy["ignore"] = True
+            self.set(location + ".0", Collection(dummy))
+        lastID: str = list(self.get(location).keys())[-1]
+        if not lastID.isnumeric():
+            return 0
+        self.set(location + "." + str(int(lastID) + 1), 0)
+        self.logger.debug(f"Current Last id now " + str(int(lastID) + 1))
+        return int(lastID) + 1
+
     # core
 
     def insert(self, text: str, startAsThread: bool = False, replacer=None) -> Optional[threading.Thread]:
@@ -172,10 +213,8 @@ class DataScientist:
                 if word.endswith((".", ",", "!", "?")):
                     word = word[:-1]
                 word = word.replace(".", "\n")
-                if not self.exists(f"collection.{word}"):
-                    self.insertCollection(Collection(getBaseCollectionDataDict(word)))
-                col = self.get(f"collection.{word}")
-                col.addCount()
+                _id: int = self.getNextAvailableID("collection")
+                self.insertCollection(Collection(getBaseCollectionDataDict(_id, word)))
 
         # check if should start as thread
         if not startAsThread:
@@ -192,14 +231,23 @@ class DataScientist:
         :param col:
         :return:
         """
-        self.logger.debug("Insert Collection named \"" + col.name + "\"")
+        self.logger.debug("Insert Collection named \"" + col.name + "\" with ID: " + str(col.id))
         # set the collection
-        self.set(f"collection.{col.name}", col)
+        self.set(f"collection.{str(col.id)}", col)
 
-    def addElement(self):
+    def addElement(self, _id: int, name: str, extraSearchs: str = "", count: int = 1, relevance: int = 0,
+                   _category: list[int] = None, ignore: bool = False):
         # add a single element to the search
-        self.logger.debug("Add element ")
-        pass
+        if _category is None:
+            _category = []
+        self.logger.debug(f"Add element with name \"{name}\"")
+        element: dict = getBaseCollectionDataDict(_id, name)
+        element["extraSearchs"] = extraSearchs
+        element["count"] = count
+        element["relevance"] = relevance
+        element["category"] = category
+        element["ignore"] = ignore
+        col: Collection = Collection(element)
 
     def removeElement(self):
         # remove a single element
@@ -222,6 +270,7 @@ class DataScientist:
         thread.start()
         return thread
 
+    @threadsafe_function
     def recreateIndex(self):
         """
         Re create the search index, this index is important for the searchs
@@ -232,7 +281,33 @@ class DataScientist:
         Or activate auto recreate Indexing on start
         :return:
         """
-        self.logger.debug("Recreate the Index")
+        self.logger.info("Recreate the Index")
+
+        df: polars.DataFrame = self.__data["index"]
+        # vorübergehendes speichern
+
+        index: dict = {
+            "id": [],
+            "name": [],
+            "extraSearchs": [],
+            "count": [],
+            "relevance": [],
+            "category": []
+        }
+        values: dict = self.get("collection").copy()
+        _id: str
+        for _id in values:
+            col: Collection = values[_id]
+            index["id"].append(col.id)
+            index["name"].append(col.name)
+            index["extraSearchs"].append(col.extraSearchs)
+            index["count"].append(col.count)
+            index["relevance"].append(col.relevance)
+            index["category"].append(col.category)
+
+        self.__data["index"] = polars.DataFrame(index)
+
+        self.logger.info("Recreate success")
 
     def __autoRecreateIndexLoop(self, cooldown: int = 60000):
         """
