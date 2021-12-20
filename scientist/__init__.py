@@ -21,7 +21,7 @@ from .databaseConnector import DatabaseConnector
 import difflib, itertools, sqlite3, threading, re, os, logging, random, time
 from typing import Optional
 
-# external library's
+# external added library's
 
 
 _version = "2.0.0 Alpha"
@@ -39,11 +39,14 @@ class DataScientist:
                             f"> - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n"
     logger: logging.Logger = None
 
-    def __init__(self, _logSettings: LogSettings = None):
+    def __init__(self, _databaseConnector: DatabaseConnector, _logSettings: LogSettings = None, autoRecreateIndex: bool = False):
         """
         Init the brain of Scientist
         :param _logSettings: Log settings, when None it will use the default
         """
+
+        # set vabs
+        self.__databaseConnector = _databaseConnector
 
         # check if not logger set
         if self.logger is None or LogSettings is not None:
@@ -59,6 +62,15 @@ class DataScientist:
         self.__data: dict = {}
         # generate default structure
         self.__generate_default_structure()
+
+        # init the index
+        self.autoRecreateIndex = autoRecreateIndex
+        self.__autoRecreateThread = None
+        if self.autoRecreateIndex:
+            self.__autoRecreateThread = threading.Thread(target=self.__autoRecreateIndexLoop, daemon=True)
+            self.__autoRecreateThread.start()
+        else:
+            self.recreateIndex()
 
         # complete init
         self.logger.info("Init complete")
@@ -209,6 +221,31 @@ class DataScientist:
         thread = threading.Thread(target=run, args=(_record, ), daemon=True)
         thread.start()
         return thread
+
+    def recreateIndex(self):
+        """
+        Re create the search index, this index is important for the searchs
+        so hold it up to date.
+
+        The Script will update the Index each time when is starting. But long time ago it can be old.
+
+        Or activate auto recreate Indexing on start
+        :return:
+        """
+        self.logger.debug("Recreate the Index")
+
+    def __autoRecreateIndexLoop(self, cooldown: int = 60000):
+        """
+        Auto recreate index function
+        It will recreate all 10 minutes the index
+        :param cooldown:
+        :return:
+        """
+
+        self.logger.debug("Start the auto recreate loop")
+        while self.autoRecreateIndex:
+            self.recreateIndex()
+            time.sleep(cooldown)
 
     # getter setter
     def getData(self) -> dict:

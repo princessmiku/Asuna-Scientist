@@ -17,16 +17,17 @@ class Record:
     logger: logging.Logger = None
 
     # init record
-    def __init__(self, searchText: str, data: dict, user: User, ignoredCollectionsIndex=None):
-        self.searchText = searchText
-        self.data = data
-        self.user = user
-        self.isResult = False
-        self.result = 0
+    def __init__(self, searchText: str, data: list, user: User, ignoredCollectionsIndex=None):
+        self.searchText: str = searchText
+        self.data: list = data
+        self.user: User = user
+        self.isResult: bool = False
+        self.result: int = 0
         if ignoredCollectionsIndex is None:
-            ignoredCollectionsIndex = []
-        self.ignoredCollectionsIndex = ignoredCollectionsIndex
+            ignoredCollectionsIndex: list = []
+        self.ignoredCollectionsIndex: list = ignoredCollectionsIndex
 
+    # set this to a specific result
     def setResult(self, index: int) -> bool:
         """
         Set the result
