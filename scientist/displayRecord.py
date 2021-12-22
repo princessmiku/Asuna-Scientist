@@ -32,7 +32,7 @@ class DRec:
         :return: the list with collection in the range of the show
         """
         showUp: int = self.currentIndex + self.maxShows
-        if self.lenOfData > showUp:
+        if self.lenOfData < showUp:
             showUp -= showUp - self.lenOfData
         return self._record.data[self.currentIndex:showUp]
 

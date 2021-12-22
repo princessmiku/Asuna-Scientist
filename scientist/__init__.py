@@ -249,7 +249,7 @@ class DataScientist:
         self.set(f"collection.{str(col.id)}", col)
 
     def addElement(self, name: str, extraSearchs: str = "", count: int = 1, relevance: int = 0,
-                   _category: list[int] = None, ignore: bool = False):
+                   _category: list[str] = None, ignore: bool = False):
         # add a single element to the search
         _id = self.getNextAvailableID("collection")
         if _category is None:
@@ -360,10 +360,12 @@ class DataScientist:
 
             usedCats: list[str] = []
             cat: str
+            ifBreak: bool = False
             for cat in category:
                 matches: list = difflib.get_close_matches(cat, toSearch)
                 if matches:
                     cC += difflib.SequenceMatcher(None, cat, matches[0]).ratio()
+                    break
                 if not self.__data["connectedCategorys"].__contains__(cat.lower()): continue
                 subCategorys: list[str] = self.__data["connectedCategorys"][cat.lower()]
                 for subC in subCategorys:
@@ -372,12 +374,20 @@ class DataScientist:
                     matches: list = difflib.get_close_matches(subC, category)
                     if matches:
                         cC += difflib.SequenceMatcher(None, subC, matches[0]).ratio()
+                        ifBreak = True
                         break
+                if ifBreak: break
             finalCount: float = nC + eC + cC
             if finalCount > 0:
-                if not result.__contains__(finalCount):
-                    result[finalCount] = []
-                result[finalCount].append(self.get("collection." + str(index.id[c])))
+                joinedName: str = " ".join(name)
+                movieCount = difflib.SequenceMatcher(None, joinedName, search).ratio()
+                if joinedName.__contains__(search):
+                    movieCount += 1
+                movieCount += difflib.SequenceMatcher(None, extras, search).ratio()
+                movieCount += cC
+                if not result.__contains__(movieCount):
+                    result[movieCount] = []
+                result[movieCount].append(self.get("collection." + str(index.id[c])))
         result = dict(pyCollections.OrderedDict(sorted(result.items(), reverse=True)))
         return Record(search, [item for sublist in result.values() for item in sublist], _user)
 
