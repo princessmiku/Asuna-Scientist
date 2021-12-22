@@ -13,7 +13,6 @@
 from .collection import Collection, getBaseCollectionDataDict
 from .user import User
 from .logSettings import LogSettings
-from .category import Category
 from .record import Record
 from .databaseConnector import DatabaseConnector
 
@@ -60,9 +59,20 @@ class DataScientist:
                             f"| Github: https://github.com/princessmiku\n" \
                             f"| Project on Github: https://github.com/princessmiku/Scientist\n" \
                             f"> - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n"
+
+    __defaultIndexStructure = {
+        "id": [],
+        "name": [],
+        "extraSearchs": [],
+        "count": [],
+        "relevance": [],
+        "category": []
+    }
+
     logger: logging.Logger = None
 
-    def __init__(self, _databaseConnector: DatabaseConnector, _logSettings: LogSettings = None, autoRecreateIndex: bool = False):
+    def __init__(self, _databaseConnector: DatabaseConnector, _logSettings: LogSettings = None,
+                 autoRecreateIndex: bool = False):
         """
         Init the brain of Scientist
         :param _logSettings: Log settings, when None it will use the default
@@ -93,7 +103,10 @@ class DataScientist:
             self.__autoRecreateThread = threading.Thread(target=self.__autoRecreateIndexLoop, daemon=True)
             self.__autoRecreateThread.start()
         else:
-            self.recreateIndex()
+            self.recreateIndex(self.__defaultIndexStructure)
+
+        # running thread list
+        self.runningThreads: list[threading.Thread] = []
 
         # complete init
         self.logger.info("Init complete")
@@ -108,6 +121,8 @@ class DataScientist:
         # check if json exists // vorübergehend
         self.__data["index"] = polars.DataFrame()
         self.__data["user"] = {}
+        self.__data["searchConnections"] = {}
+        self.__data["connectedCategorys"] = {}
 
     def get(self, location: str) -> [int, str, bool]:
         # get data from a location
@@ -185,6 +200,7 @@ class DataScientist:
 
     def insert(self, text: str, startAsThread: bool = False, replacer=None) -> Optional[threading.Thread]:
         """
+        Think is useless
         Insert a big text in the search engine, it will separate every word for searching it.
         :param text: insert text
         :param startAsThread: should it start as thread for speed up?
@@ -243,7 +259,7 @@ class DataScientist:
         element["extraSearchs"] = extraSearchs
         element["count"] = count
         element["relevance"] = relevance
-        element["category"] = category
+        element["category"] = _category
         element["ignore"] = ignore
         col: Collection = Collection(element)
         self.insertCollection(col)
@@ -254,37 +270,135 @@ class DataScientist:
         pass
 
     # learning
-    def insertRecord(self, _record: Record) -> threading.Thread:
+    @threadsafe_function
+    def __addSCEntry(self, text: str):
+        text = text.lower()
+        if self.__data["searchConnections"].__contains__(text): return
+        self.__data["searchConnections"][text] = []
+
+    @threadsafe_function
+    def __addCCEntry(self, name: str, values: list[str]):
+        name = name.lower()
+        if not self.__data["connectedCategorys"].__contains__(name):
+            self.__data["connectedCategorys"][name] = {}
+        v: str
+        for v in values:
+            v = v.lower()
+            if not self.__data["connectedCategorys"][name].__contains__(v):
+                self.__data["connectedCategorys"][name][v] = 0
+            self.__data["connectedCategorys"][name][v] += 1
+            if not self.__data["connectedCategorys"].__contains__(v):
+                self.__data["connectedCategorys"][v] = {}
+            if not self.__data["connectedCategorys"][v].__contains__(name):
+                self.__data["connectedCategorys"][v][name] = 0
+            self.__data["connectedCategorys"][v][name] += 1
+
+
+
+    def insertRecord(self, _record: Record):
         """
         Insert the finish record for learn the algorithm
         This Function work as a thread for maximum speed
+        So is can be that this thread are not finish when you are finish
         :param _record:
         :return: the working thread
         """
 
-        def run(_record: Record):
-            pass
-
-        self.logger.debug("init and start thread in insertRecord for search text \"" + _record.searchText + "\"")
-        thread = threading.Thread(target=run, args=(_record, ), daemon=True)
-        thread.start()
-        return thread
+        result = _record.getResult()
+        # check is a result, for work with it
+        if result is None: return
+        self.logger.debug("init and start thread in insertRecord for search text \"" +
+                          _record.searchText + "\" and the result " + str(result.id)
+                          )
+        # search Connections, add results for the search
+        self.__addSCEntry(_record.searchText)
+        self.__data["searchConnections"][_record.searchText.lower()].append(result.id)
+        # category connections
+        self.__addCCEntry(_record.searchText, result.category)
 
     # searching
     def match(self, search: str, _user: [User, int] = None) -> Record:
         """
-        :param search:
-        :param _user:
+        Search in your data for the best matches, contains self learning
+        :param search: Search text
+        :param _user: Specific user, only require for user personalisation results
         :return:
         """
 
+        # setup data
         index: polars.DataFrame = self.get("index")
-        print(index)
         result: dict = {}
         names: polars.Series = index.name
         extraSearchs: polars.Series = index.extraSearchs
+        categorysList: polars.Series = index.category
+        # counter
         c: int
+        # split the search
         toSearch: list = search.split(" ")
+        # split words in name/extra
+        n: str
+        e: str
+        for c in range(len(names)):
+            name: list[str] = names[c].split(" ")
+            extras: list[str] = extraSearchs[c].split(" ")
+            category: list[str] = categorysList[c]
+            nC: int = 0
+            eC: int = 0
+            cC: int = 0
+            thisSearchN: list[str] = toSearch.copy()
+            thisSearchE: list[str] = toSearch.copy()
+            for n in name:
+                matches: list = difflib.get_close_matches(n, thisSearchN)
+                if matches:
+                    nC += difflib.SequenceMatcher(None, n, matches[0]).ratio()
+                    #thisSearchN.remove(matches[0])
+            for e in extras:
+                matches: list = difflib.get_close_matches(e, thisSearchE)
+                if matches:
+                    eC += difflib.SequenceMatcher(None, e, matches[0]).ratio()
+                    #thisSearchE.remove(matches[0])
+
+            usedCats: list[str] = []
+            cat: str
+            for cat in category:
+                matches: list = difflib.get_close_matches(cat, toSearch)
+                if matches:
+                    cC += difflib.SequenceMatcher(None, cat, matches[0]).ratio()
+                if not self.__data["connectedCategorys"].__contains__(cat.lower()): continue
+                subCategorys: list[str] = self.__data["connectedCategorys"][cat.lower()]
+                for subC in subCategorys:
+                    if usedCats.__contains__(subC): continue
+                    usedCats.append(subC)
+                    matches: list = difflib.get_close_matches(subC, category)
+                    if matches:
+                        cC += difflib.SequenceMatcher(None, subC, matches[0]).ratio()
+                        break
+            finalCount: float = nC + eC + cC
+            if finalCount > 0:
+                if not result.__contains__(finalCount):
+                    result[finalCount] = []
+                result[finalCount].append(self.get("collection." + str(index.id[c])))
+        result = dict(pyCollections.OrderedDict(sorted(result.items(), reverse=True)))
+        return Record(search, [item for sublist in result.values() for item in sublist], _user)
+
+    # searching
+    def matchNSLD(self, search: str) -> Record:
+        """
+        NSLD = Not self learning data
+        Search in your data for the best matches, without the learning thinks
+        :param search: search text
+        :return:
+        """
+        # setup data
+        index: polars.DataFrame = self.get("index")
+        result: dict = {}
+        names: polars.Series = index.name
+        extraSearchs: polars.Series = index.extraSearchs
+        # counter
+        c: int
+        # split the search
+        toSearch: list = search.split(" ")
+        # split words in name/extra
         n: str
         e: str
         for c in range(len(names)):
@@ -310,11 +424,11 @@ class DataScientist:
                     result[finalCount] = []
                 result[finalCount].append(self.get("collection." + str(index.id[c])))
         result = dict(pyCollections.OrderedDict(sorted(result.items(), reverse=True)))
-        return Record(search, [item for sublist in result.values() for item in sublist], _user)
+        return Record(search, [item for sublist in result.values() for item in sublist], User(user.defaultStructure))
 
     # index
     @threadsafe_function
-    def recreateIndex(self):
+    def recreateIndex(self, indexData=None):
         """
         Re create the search index, this index is important for the searchs
         so hold it up to date.
@@ -322,21 +436,24 @@ class DataScientist:
         The Script will update the Index each time when is starting. But long time ago it can be old.
 
         Or activate auto recreate Indexing on start
+        :param indexData: give the index specific data for create a specific index, not recommended!
         :return:
         """
+        if indexData is None:
+            indexData = {}
         self.logger.info("Recreate the Index")
 
-        df: polars.DataFrame = self.__data["index"]
+        #df: polars.DataFrame = self.__data["index"]
         # vorübergehendes speichern
 
         index: dict = {
-            "id": [],
-            "name": [],
-            "extraSearchs": [],
-            "count": [],
-            "relevance": [],
-            "category": []
-        }
+        "id": [],
+        "name": [],
+        "extraSearchs": [],
+        "count": [],
+        "relevance": [],
+        "category": []
+    }
         values: dict = self.get("collection").copy()
         if values.__contains__("0"):
             values.pop("0")
@@ -350,7 +467,7 @@ class DataScientist:
             index["relevance"].append(float(col.relevance))
             index["category"].append(col.category)
 
-        self.__data["index"] = polars.DataFrame(index)
+        self.__data.__setitem__("index",  polars.DataFrame(index))
 
         self.logger.info("Recreate success")
 
@@ -366,6 +483,18 @@ class DataScientist:
         while self.autoRecreateIndex:
             self.recreateIndex()
             time.sleep(cooldown)
+
+    # cleaning
+    def cleanUp(self):
+        """
+        Clean your data, it will remove invalid entry or old data what are no longer in use
+        like a deleted element, it will sorting all data new correctly, do not add new element in this time
+        it can be deleted!.
+
+        This process can take long time
+        :return:
+        """
+        pass
 
     # getter setter
     def getData(self) -> dict:
@@ -426,7 +555,6 @@ class DataScientist:
             f.close()
 
         # Set the logger
-        Category.logger = self.logger
         Collection.logger = self.logger
         DatabaseConnector.logger = self.logger
         Record.logger = self.logger

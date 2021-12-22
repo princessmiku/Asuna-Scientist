@@ -34,7 +34,7 @@ class Record:
         :param index: index of the result
         :return: is successfully
         """
-        if len(self.data) - 1 > index: return False
+        if len(self.data) < index: return False
         self.isResult = True
         self.result = index
         return True

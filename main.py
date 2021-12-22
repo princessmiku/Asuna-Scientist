@@ -12,7 +12,7 @@ import time
 import polars
 
 import scientist as sc
-from scientist import Category, LogSettings, Collection, databaseConnector, Record
+from scientist import LogSettings, Collection, databaseConnector, Record
 
 start_time = time.time()
 scientist = sc.DataScientist(databaseConnector.DatabaseConnector("./log/test.db", True))
@@ -27,11 +27,13 @@ theMasterofDicts: dict = {}
 #for col in data:
 #    print(col.name, col.count)
 ## add data
+
+
 videos: dict = {
     1: {
         "name": "Learn Flask for Python - Full Tutorial",
         "url": "https://www.youtube.com/watch?v=Z1RJmh_OqeA",
-        "category": ["python", "flask", "website", "english", "programming", "webserver"],
+        "category": ["python", "flask", "website", "english", "programming", "webserver", "web"],
         "description": "Flask is a micro web framework written in Python. ",
         "author": ["freeCodeCamp.org", "freeCodeCamp"],
         "relevance": 835000 / 349,
@@ -86,41 +88,13 @@ videos: dict = {
 catDict = {}
 nextAv = 0
 for d in videos:
-    catIdsHere = []
-    for mirGehenDieNamenAus in videos[d]["category"]:
-        if not catDict.__contains__(mirGehenDieNamenAus):
-            catDict[mirGehenDieNamenAus] = nextAv
-            nextAv += 1
-        catIdsHere.append(catDict[mirGehenDieNamenAus])
-    scientist.addElement(videos[d]["name"], videos[d]["description"] + " " + " ".join(videos[d]["author"]) + " " + " ".join(videos[d]["category"]), videos[d]["watches"], videos[d]["relevance"], catIdsHere)
+    scientist.addElement(videos[d]["name"], videos[d]["description"] + " " + " ".join(videos[d]["author"]), videos[d]["watches"], videos[d]["relevance"], videos[d]["category"] + videos[d]["author"])
 scientist.recreateIndex()
-index: polars.DataFrame = scientist.get("index")
-word = "lordi"
-
-
-def find_it(w, dfSeries):
-    w = w.lower()
-    return difflib.get_close_matches(w, dfSeries, cutoff=0.125)
-
-
-def find_itOthers(w, dfSeries):
-    w = w.lower()
-    return difflib.get_close_matches(w, dfSeries, cutoff=0)
-
-titels = find_it(word, index.name)
-others = find_itOthers(word, index.extraSearchs)
-
-#for t in titels:
-    #print(t, difflib.SequenceMatcher(None, word, t).ratio())
-
-#for t in others:
-    #print(t, difflib.SequenceMatcher(None, word, t).ratio())
-
-#print(titels)
-#print(others)
-
 scientist.recreateIndex()
+
 rec: Record = scientist.match("flask")
-d: Collection
+rec.setResult(0)
+scientist.insertRecord(rec)
+rec: Record = scientist.match("java")
 for d in rec.data:
     print(d.id, d.name)
