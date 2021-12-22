@@ -9,28 +9,30 @@ import sys
 import threading
 import time
 
+import polars
 
 import scientist as sc
-from scientist import Category, LogSettings, Collection, databaseConnector
+from scientist import Category, LogSettings, Collection, databaseConnector, Record
 
 start_time = time.time()
 scientist = sc.DataScientist(databaseConnector.DatabaseConnector("./log/test.db", True))
-scientist.insert("Hello from the other side, can you hear me from the other building at the top")
-data: list = scientist.getData()["collection"].values()
-col: Collection
-scientist.recreateIndex()
-print(scientist.get("index"))
-for col in data:
-    print(col.name, col.count)
-# add data
+
+theMasterofDicts: dict = {}
+
+
+#data: list = scientist.getData()["collection"].values()
+#col: Collection
+#scientist.recreateIndex()
+#print(scientist.get("index"))
+#for col in data:
+#    print(col.name, col.count)
+## add data
 videos: dict = {
     1: {
         "name": "Learn Flask for Python - Full Tutorial",
         "url": "https://www.youtube.com/watch?v=Z1RJmh_OqeA",
         "category": ["python", "flask", "website", "english", "programming", "webserver"],
-        "description": "Flask is a micro web framework written in Python. "
-                       "It is classified as a microframework because it does not require particular tools or libraries."
-                       "Learn how to use it in this crash course tutorial.",
+        "description": "Flask is a micro web framework written in Python. ",
         "author": ["freeCodeCamp.org", "freeCodeCamp"],
         "relevance": 835000 / 349,
         "watches": 835000
@@ -38,8 +40,8 @@ videos: dict = {
     2: {
         "name": "Java Web Programmierung Teil 1: Http-Requests und Webserver",
         "url": "https://www.youtube.com/watch?v=QYmvV4msjEY",
-        "category": ["java", "webserver", "http", "german", "web", "programming", "Technic"],
-        "description": "",
+        "category": ["java", "webserver", "http", "german", "web", "programming", "Technic", "framework"],
+        "description": "Lerne Java Programmierung framework framework",
         "author": ["TotalSurpriseException"],
         "relevance": 10200 / 6,
         "watches": 10200
@@ -70,5 +72,55 @@ videos: dict = {
         "author": ["Lordi"],
         "relevance": 81000000 / 23000,
         "watches": 81000000
+    },
+    6: {
+        "name": "Learn Flusk for Python - Full Tutorial",
+        "url": "https://www.youtube.com/watch?v=Z1RJmh_OqeA",
+        "category": ["python", "Flusk", "website", "english", "programming", "webserver"],
+        "description": "Flusk is a micro web framework written in Python. ",
+        "author": ["freeCodeCamp.org", "freeCodeCamp"],
+        "relevance": 835000 / 349,
+        "watches": 835000
     }
 }
+catDict = {}
+nextAv = 0
+for d in videos:
+    catIdsHere = []
+    for mirGehenDieNamenAus in videos[d]["category"]:
+        if not catDict.__contains__(mirGehenDieNamenAus):
+            catDict[mirGehenDieNamenAus] = nextAv
+            nextAv += 1
+        catIdsHere.append(catDict[mirGehenDieNamenAus])
+    scientist.addElement(videos[d]["name"], videos[d]["description"] + " " + " ".join(videos[d]["author"]) + " " + " ".join(videos[d]["category"]), videos[d]["watches"], videos[d]["relevance"], catIdsHere)
+scientist.recreateIndex()
+index: polars.DataFrame = scientist.get("index")
+word = "lordi"
+
+
+def find_it(w, dfSeries):
+    w = w.lower()
+    return difflib.get_close_matches(w, dfSeries, cutoff=0.125)
+
+
+def find_itOthers(w, dfSeries):
+    w = w.lower()
+    return difflib.get_close_matches(w, dfSeries, cutoff=0)
+
+titels = find_it(word, index.name)
+others = find_itOthers(word, index.extraSearchs)
+
+#for t in titels:
+    #print(t, difflib.SequenceMatcher(None, word, t).ratio())
+
+#for t in others:
+    #print(t, difflib.SequenceMatcher(None, word, t).ratio())
+
+#print(titels)
+#print(others)
+
+scientist.recreateIndex()
+rec: Record = scientist.match("flask")
+d: Collection
+for d in rec.data:
+    print(d.id, d.name)

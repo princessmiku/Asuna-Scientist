@@ -10,10 +10,6 @@
     https://www.blindtextgenerator.de/
 """
 # Own library's
-import json
-
-import polars
-
 from .collection import Collection, getBaseCollectionDataDict
 from .user import User
 from .logSettings import LogSettings
@@ -22,10 +18,11 @@ from .record import Record
 from .databaseConnector import DatabaseConnector
 
 # import python stuff
-import difflib, itertools, sqlite3, threading, re, os, logging, random, time, functools
+import difflib, itertools, sqlite3, threading, re, os, logging, random, time, functools, collections as pyCollections
 from typing import Optional
 
 # external added library's
+import polars
 
 
 _version = "2.0.0 Alpha"
@@ -235,9 +232,10 @@ class DataScientist:
         # set the collection
         self.set(f"collection.{str(col.id)}", col)
 
-    def addElement(self, _id: int, name: str, extraSearchs: str = "", count: int = 1, relevance: int = 0,
+    def addElement(self, name: str, extraSearchs: str = "", count: int = 1, relevance: int = 0,
                    _category: list[int] = None, ignore: bool = False):
         # add a single element to the search
+        _id = self.getNextAvailableID("collection")
         if _category is None:
             _category = []
         self.logger.debug(f"Add element with name \"{name}\"")
@@ -248,12 +246,14 @@ class DataScientist:
         element["category"] = category
         element["ignore"] = ignore
         col: Collection = Collection(element)
+        self.insertCollection(col)
 
     def removeElement(self):
         # remove a single element
         self.logger.debug("Remove element ")
         pass
 
+    # learning
     def insertRecord(self, _record: Record) -> threading.Thread:
         """
         Insert the finish record for learn the algorithm
@@ -270,6 +270,49 @@ class DataScientist:
         thread.start()
         return thread
 
+    # searching
+    def match(self, search: str, _user: [User, int] = None) -> Record:
+        """
+        :param search:
+        :param _user:
+        :return:
+        """
+
+        index: polars.DataFrame = self.get("index")
+        print(index)
+        result: dict = {}
+        names: polars.Series = index.name
+        extraSearchs: polars.Series = index.extraSearchs
+        c: int
+        toSearch: list = search.split(" ")
+        n: str
+        e: str
+        for c in range(len(names)):
+            name: list[str] = names[c].split(" ")
+            extras: list[str] = extraSearchs[c].split(" ")
+            nC: int = 0
+            eC: int = 0
+            thisSearchN: list[str] = toSearch.copy()
+            thisSearchE: list[str] = toSearch.copy()
+            for n in name:
+                matches: list = difflib.get_close_matches(n, thisSearchN)
+                if matches:
+                    nC += difflib.SequenceMatcher(None, n, matches[0]).ratio()
+                    #thisSearchN.remove(matches[0])
+            for e in extras:
+                matches: list = difflib.get_close_matches(e, thisSearchE)
+                if matches:
+                    eC += difflib.SequenceMatcher(None, e, matches[0]).ratio()
+                    #thisSearchE.remove(matches[0])
+            finalCount: float = nC + eC
+            if finalCount > 0:
+                if not result.__contains__(finalCount):
+                    result[finalCount] = []
+                result[finalCount].append(self.get("collection." + str(index.id[c])))
+        result = dict(pyCollections.OrderedDict(sorted(result.items(), reverse=True)))
+        return Record(search, [item for sublist in result.values() for item in sublist], _user)
+
+    # index
     @threadsafe_function
     def recreateIndex(self):
         """
@@ -295,14 +338,16 @@ class DataScientist:
             "category": []
         }
         values: dict = self.get("collection").copy()
+        if values.__contains__("0"):
+            values.pop("0")
         _id: str
         for _id in values:
             col: Collection = values[_id]
             index["id"].append(col.id)
             index["name"].append(col.name)
             index["extraSearchs"].append(col.extraSearchs)
-            index["count"].append(col.count)
-            index["relevance"].append(col.relevance)
+            index["count"].append(float(col.count))
+            index["relevance"].append(float(col.relevance))
             index["category"].append(col.category)
 
         self.__data["index"] = polars.DataFrame(index)
