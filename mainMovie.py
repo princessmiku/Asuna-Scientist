@@ -18,8 +18,11 @@ with open("./data/dataset.csv", 'r', encoding='utf-8') as csv_file:
         scientist.addElement(name=name, extraSearchs=extras, _category=categorys)
 scientist.recreateIndex()
 print("-------------------------------")
+rec: Record = scientist.match("Spider")
+rec.setResult(1)
+scientist.insertRecord(rec)
 startTime = time.time()
-rec: Record = scientist.match("Begins")
+rec: Record = scientist.match("Spider")
 endTime = time.time()
 disp = DRec(rec)
 for r in disp.get():

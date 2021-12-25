@@ -290,14 +290,14 @@ class DataScientist:
             return self.__data["searchConnections"][text].__contains__(otherText)
         return False
 
-    def __checkSCEntryDiff(self, text: str, otherText: str = None) -> Optional[str]:
+    def __checkSCEntryDiff(self, text: str, otherText: str) -> [str, int]:
         text = text.lower()
-        matches = difflib.get_close_matches(list(self.__data["searchConnections"].keys()), text)
+        matches = difflib.get_close_matches(text, list(self.__data["searchConnections"].keys()))
         if matches:
-            if otherText is None:
-                return matches[0]
-            return difflib.get_close_matches(list(self.__data["searchConnections"][matches[0]]), otherText)[0]
-        return None
+            matches2 = difflib.get_close_matches(otherText, list(self.__data["searchConnections"][matches[0]]))
+            if matches2:
+                return matches2[0], self.__data["searchConnections"][matches[0]][matches2[0]]
+        return None, None
 
     @threadsafe_function
     def __addCCEntry(self, name: str, values: list[str]):
@@ -332,7 +332,7 @@ class DataScientist:
                           _record.searchText + "\" and the result " + str(result.id)
                           )
         # search Connections, add results for the search
-        self.__addSCEntry(_record.searchText)
+        self.__addSCEntry(_record.searchText, result.name)
         # category connections
         self.__addCCEntry(_record.searchText, result.category)
 
@@ -400,14 +400,18 @@ class DataScientist:
                 if ifBreak: break
             finalCount: float = nC + eC + cC
             if finalCount > 0:
-
-
                 joinedName: str = " ".join(name)
                 movieCount = difflib.SequenceMatcher(None, joinedName, search).ratio()
                 if joinedName.__contains__(search):
                     movieCount += 1
                 movieCount += difflib.SequenceMatcher(None, extras, search).ratio()
                 movieCount += cC
+                matchName, addCount = self.__checkSCEntryDiff(search, joinedName)
+                if matchName:
+                    matchPercent = difflib.SequenceMatcher(None, joinedName, matchName).ratio()
+                    if matchPercent >= 0.72:  # spider percent
+                        movieCount += addCount
+
                 if not result.__contains__(movieCount):
                     result[movieCount] = []
                 result[movieCount].append(self.get("collection." + str(index.id[c])))
