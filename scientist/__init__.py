@@ -410,7 +410,7 @@ class DataScientist:
                 if matchName:
                     matchPercent = difflib.SequenceMatcher(None, joinedName, matchName).ratio()
                     if matchPercent >= 0.72:  # spider percent
-                        movieCount += addCount
+                        movieCount += addCount * matchPercent
 
                 if not result.__contains__(movieCount):
                     result[movieCount] = []

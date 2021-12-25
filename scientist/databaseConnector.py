@@ -1,57 +1,74 @@
 """
-customisable database connector
+    Abstract Class for a database connector sample
 
-Allows you to create the storage behavior completely yourself
+    create your own database connector for your system
 
+    Its possible to use all possible saving systems with a personal Connector
+
+    Its use the sql structure
+
+
+    you will get any time the structure of a multi request and you must return the result like a multi request.
+    Its easy and better to handle
 """
-import sqlite3, logging
+from abc import ABC, abstractmethod
 
 
-class DatabaseConnector:
-    logger: logging.Logger = None
+class DatabaseConnector(ABC):
 
-    def __init__(self, location: str, autoCommit: bool = True):
-        self.database: sqlite3.Connection = sqlite3.connect(location)
-        self.autoCommit: bool = autoCommit
+    def __init__(self):
+        pass
 
-    def get(self, table: str, columns: [str, list], where: list = False) -> list:
-        # build the sql str
-        sql_str: str = f"SELECT "
-        if isinstance(columns, list):
-            sql_str += ", ".join(columns)
-        else:
-            sql_str += columns
-        sql_str += f" FROM {table}"
-        if where:
-            if isinstance(where[1], str):
-                sql_str += f" WHERE '{where[1]}'"
-            else:
-                sql_str += f" WHERE {str(where[1])}"
-        return self.database.execute(sql_str).fetchall()
+    @abstractmethod
+    def get(self, table: str, columns: list[str], where: [list[int], list[str]] = None, fromWhere: str = "id") -> [list[list[any]]]:
+        """
+        Get data from your saving system
+        :param table:
+        :param columns:
+        :param where: set of ids
+        :param fromWhere:
+        :return:
+        """
 
-    def set(self, table: str, columns: [str, list], values: [str, list], where: list = False):
-        # build the sql str
-        sql_str: str = f"UPDATE {table} SET "
-        if isinstance(columns, list):
-            saving_values: list = []
-            for z in zip(columns, values):
-                if isinstance(z[0], str):
-                    saving_values.append(f"{z[0]} = '{z[1]}'")
-                else:
-                    saving_values.append(f"{z[0]} = {z[1]}")
-            sql_str += ", ".join(saving_values)
-        else:
-            sql_str += columns + ", " + values
-        sql_str += f" FROM {table}"
-        if where:
-            if isinstance(where[1], str):
-                sql_str += f" WHERE '{where[1]}'"
-            else:
-                sql_str += f" WHERE {str(where[1])}"
-        self.database.execute(sql_str).fetchall()
+    @abstractmethod
+    def set(self, table: str, columns: list[str], values: list[list[any]], where: [list[int], list[str]], fromWhere: str = "id"):
+        """
+        Set data in your saving system
+        :param table:
+        :param columns:
+        :param values:
+        :param where: set of ids
+        :param fromWhere:
+        :return:
+        """
+        pass
 
-        # commit automatically new data
-        if self.autoCommit: self.commit()
+    @abstractmethod
+    def exists(self, table: str, _id: list[int, str]) -> list[bool]:
+        """
+        Check if data exists
+        :param table:
+        :param _id: id of the checked objekt
+        :return: return true or fasle
+        """
+        pass
 
+    @abstractmethod
+    def insert(self, table: str, columns: list[str], values: list[list[any]]):
+        """
+        :param table:
+        :param _id:
+        :param columns:
+        :param values:
+        :return:
+        """
+        pass
+
+    @abstractmethod
     def commit(self):
-        self.database.commit()
+        """
+        Commit your data
+        if don't needed, pass it
+        :return:
+        """
+        pass

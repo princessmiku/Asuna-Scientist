@@ -1,12 +1,14 @@
+import sys
 import time
 
 import scientist as sc
-from scientist import LogSettings, Collection, databaseConnector, Record
+from scientist import LogSettings, Collection, Record
 from scientist.displayRecord import DRec
+from scientist.databaseConnectorSQLite import DCSqlite
 
 import csv
 
-scientist = sc.DataScientist(databaseConnector.DatabaseConnector("./log/test.db", True))
+scientist = sc.DataScientist(DCSqlite("./log/test.db"))
 
 with open("./data/dataset.csv", 'r', encoding='utf-8') as csv_file:
     csv_reader = csv.reader(csv_file)
@@ -19,7 +21,7 @@ with open("./data/dataset.csv", 'r', encoding='utf-8') as csv_file:
 scientist.recreateIndex()
 print("-------------------------------")
 rec: Record = scientist.match("Spider")
-rec.setResult(1)
+rec.setResult(5)
 scientist.insertRecord(rec)
 startTime = time.time()
 rec: Record = scientist.match("Spider")
