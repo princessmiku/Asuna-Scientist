@@ -19,7 +19,7 @@ with open("./data/dataset.csv", 'r', encoding='utf-8') as csv_file:
 scientist.recreateIndex()
 print("-------------------------------")
 startTime = time.time()
-rec: Record = scientist.match("Super Mario Bros.")
+rec: Record = scientist.match("Begins")
 endTime = time.time()
 disp = DRec(rec)
 for r in disp.get():

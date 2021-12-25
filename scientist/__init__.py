@@ -23,8 +23,8 @@ from typing import Optional
 # external added library's
 import polars
 
-
 _version = "2.0.0 Alpha"
+
 
 # stuff?
 
@@ -46,11 +46,11 @@ def threadsafe_function(fn):
         finally:
             lock.release()
         return r
+
     return new
 
 
 class DataScientist:
-
     # Simple default text for the top of the log
     __defaultLogTextStart = f"> - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n" \
                             f"| Data Scientist V2\n" \
@@ -234,7 +234,7 @@ class DataScientist:
             run(text)
         else:
             self.logger.debug("Start text insertion as a thread")
-            thread = threading.Thread(target=run, args=(text, ), daemon=True)
+            thread = threading.Thread(target=run, args=(text,), daemon=True)
             thread.start()
             return thread
 
@@ -271,10 +271,33 @@ class DataScientist:
 
     # learning
     @threadsafe_function
-    def __addSCEntry(self, text: str):
+    def __addSCEntry(self, text: str, chosen: str = None):
         text = text.lower()
-        if self.__data["searchConnections"].__contains__(text): return
-        self.__data["searchConnections"][text] = []
+        if not self.__data["searchConnections"].__contains__(text):
+            self.__data["searchConnections"][text] = {}
+        if chosen:
+            chosen = chosen.lower()
+            if not self.__data["searchConnections"][text].__contains__(chosen):
+                self.__data["searchConnections"][text][chosen] = 0
+            self.__data["searchConnections"][text][chosen] += 1
+
+    def __existsSCEntry(self, text: str, otherText: str = None) -> bool:
+        text = text.lower()
+        if otherText is None:
+            return self.__data["searchConnections"].__contains__(text)
+        otherText = otherText.lower()
+        if self.__data["searchConnections"].__contains__(text):
+            return self.__data["searchConnections"][text].__contains__(otherText)
+        return False
+
+    def __checkSCEntryDiff(self, text: str, otherText: str = None) -> Optional[str]:
+        text = text.lower()
+        matches = difflib.get_close_matches(list(self.__data["searchConnections"].keys()), text)
+        if matches:
+            if otherText is None:
+                return matches[0]
+            return difflib.get_close_matches(list(self.__data["searchConnections"][matches[0]]), otherText)[0]
+        return None
 
     @threadsafe_function
     def __addCCEntry(self, name: str, values: list[str]):
@@ -293,8 +316,6 @@ class DataScientist:
                 self.__data["connectedCategorys"][v][name] = 0
             self.__data["connectedCategorys"][v][name] += 1
 
-
-
     def insertRecord(self, _record: Record):
         """
         Insert the finish record for learn the algorithm
@@ -312,7 +333,6 @@ class DataScientist:
                           )
         # search Connections, add results for the search
         self.__addSCEntry(_record.searchText)
-        self.__data["searchConnections"][_record.searchText.lower()].append(result.id)
         # category connections
         self.__addCCEntry(_record.searchText, result.category)
 
@@ -347,16 +367,17 @@ class DataScientist:
             cC: int = 0
             thisSearchN: list[str] = toSearch.copy()
             thisSearchE: list[str] = toSearch.copy()
+
             for n in name:
                 matches: list = difflib.get_close_matches(n, thisSearchN)
                 if matches:
                     nC += difflib.SequenceMatcher(None, n, matches[0]).ratio()
-                    #thisSearchN.remove(matches[0])
+                    # thisSearchN.remove(matches[0])
             for e in extras:
                 matches: list = difflib.get_close_matches(e, thisSearchE)
                 if matches:
                     eC += difflib.SequenceMatcher(None, e, matches[0]).ratio()
-                    #thisSearchE.remove(matches[0])
+                    # thisSearchE.remove(matches[0])
 
             usedCats: list[str] = []
             cat: str
@@ -379,6 +400,8 @@ class DataScientist:
                 if ifBreak: break
             finalCount: float = nC + eC + cC
             if finalCount > 0:
+
+
                 joinedName: str = " ".join(name)
                 movieCount = difflib.SequenceMatcher(None, joinedName, search).ratio()
                 if joinedName.__contains__(search):
@@ -422,12 +445,12 @@ class DataScientist:
                 matches: list = difflib.get_close_matches(n, thisSearchN)
                 if matches:
                     nC += difflib.SequenceMatcher(None, n, matches[0]).ratio()
-                    #thisSearchN.remove(matches[0])
+                    # thisSearchN.remove(matches[0])
             for e in extras:
                 matches: list = difflib.get_close_matches(e, thisSearchE)
                 if matches:
                     eC += difflib.SequenceMatcher(None, e, matches[0]).ratio()
-                    #thisSearchE.remove(matches[0])
+                    # thisSearchE.remove(matches[0])
             finalCount: float = nC + eC
             if finalCount > 0:
                 if not result.__contains__(finalCount):
@@ -453,17 +476,17 @@ class DataScientist:
             indexData = {}
         self.logger.info("Recreate the Index")
 
-        #df: polars.DataFrame = self.__data["index"]
+        # df: polars.DataFrame = self.__data["index"]
         # vorübergehendes speichern
 
         index: dict = {
-        "id": [],
-        "name": [],
-        "extraSearchs": [],
-        "count": [],
-        "relevance": [],
-        "category": []
-    }
+            "id": [],
+            "name": [],
+            "extraSearchs": [],
+            "count": [],
+            "relevance": [],
+            "category": []
+        }
         values: dict = self.get("collection").copy()
         if values.__contains__("0"):
             values.pop("0")
@@ -477,7 +500,7 @@ class DataScientist:
             index["relevance"].append(float(col.relevance))
             index["category"].append(col.category)
 
-        self.__data.__setitem__("index",  polars.DataFrame(index))
+        self.__data.__setitem__("index", polars.DataFrame(index))
 
         self.logger.info("Recreate success")
 
