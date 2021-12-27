@@ -18,10 +18,11 @@ with open("./data/dataset.csv", 'r', encoding='utf-8') as csv_file:
         extras = line[1] + " " + " ".join(line[16].split("|")) + " " + line[19]
         categorys: list[str] = line[9].split("|")
         scientist.addElement(name=name, extraSearchs=extras, _category=categorys)
+
 scientist.recreateIndex()
 print("-------------------------------")
 rec: Record = scientist.match("Spider")
-rec.setResult(5)
+rec.setResult(6)
 scientist.insertRecord(rec)
 startTime = time.time()
 rec: Record = scientist.match("Spider")
@@ -31,3 +32,4 @@ for r in disp.get():
     print(r.name)
 
 print("Searched in", endTime - startTime, "s, in ", len(scientist.get("index")), " different data")
+scientist.save()

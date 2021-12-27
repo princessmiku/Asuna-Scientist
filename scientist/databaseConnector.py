@@ -57,9 +57,22 @@ class DatabaseConnector(ABC):
     def insert(self, table: str, columns: list[str], values: list[list[any]]):
         """
         :param table:
-        :param _id:
         :param columns:
         :param values:
+        :return:
+        """
+        pass
+
+
+    @abstractmethod
+    def insertOrUpdate(self, table: str, columns: list[str], values: list[list[any]], where: [list[int], list[str]], fromWhere: str = "id"):
+        """
+
+        :param table:
+        :param columns:
+        :param values:
+        :param where:
+        :param fromWhere:
         :return:
         """
         pass

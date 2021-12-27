@@ -47,7 +47,7 @@ class DCSqlite(DatabaseConnector):
             if isinstance(w, int):
                 sql_str += f" WHERE {fromWhere} = {w}"
             else:
-                sql_str += f" WHERE {fromWhere} = '{w}'"
+                sql_str += f" WHERE {fromWhere} = '" + str(w).replace("'", "''") + "'"
             sql_str += ";\n"
         self.database.executescript(sql_str)
         self.commit()
@@ -68,10 +68,28 @@ class DCSqlite(DatabaseConnector):
                 if isinstance(v, int):
                     insertData.append(str(v))
                 else:
-                    insertData.append(f"'{v}'")
+                    insertData.append("'" + str(v).replace("'", "''") + "'")
             sql_str += ", ".join(insertData)
             sql_str += ");\n"
         print(sql_str)
+        self.database.executescript(sql_str)
+        self.commit()
+
+    def insertOrUpdate(self, table: str, columns: list[str], values: list[list[any]], where: [list[int], list[str]], fromWhere: str = "id"):
+        sql_str: str = ""
+        c: int
+        w: str
+        for c, w in enumerate(where):
+            sql_str += f"INSERT OR REPLACE INTO {table} ({', '.join(columns)}) VALUES ("
+            entry: list[any] = values[c]
+            insertData = []
+            for v in entry:
+                if isinstance(v, int):
+                    insertData.append(str(v))
+                else:
+                    insertData.append("'" + str(v).replace("'", "''") + "'")
+            sql_str += ", ".join(insertData)
+            sql_str += ");\n"
         self.database.executescript(sql_str)
         self.commit()
 

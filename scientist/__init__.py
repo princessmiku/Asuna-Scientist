@@ -10,6 +10,8 @@
     https://www.blindtextgenerator.de/
 """
 # Own library's
+import json
+
 from .collection import Collection, getBaseCollectionDataDict
 from .user import User
 from .logSettings import LogSettings
@@ -539,12 +541,48 @@ class DataScientist:
         self.logger.debug("Get ALL data")
         return self.__data
 
-    # extras
-
+    # save and load
     def save(self) -> bool:
         # save all data
         self.logger.info("SAVE")
+
+        data: dict = self.__data["collection"].copy()
+        dataList: list = []
+        whereIds: list = []
+        col: Collection
+        for col in data:
+            col = data[col]
+            whereIds.append(col.id)
+            dataList.append([col.id, col.identifikator, col.name, json.dumps(col.category),
+                             col.extraSearchs, col.count, str(col.ignore)])
+        self.__databaseConnector.insertOrUpdate("collection", ["id", "identifier", "name", "category", "extraSearch", "count", "ignore"], dataList, whereIds)
+
+
+        data: dict = self.__data["searchConnections"].copy()
+        dataList: list = []
+        whereIds: list = []
+        for d in data:
+            whereIds.append(d)
+            dataList.append([d, json.dumps([data[d]])])
+        self.__databaseConnector.insertOrUpdate("searchConnections", ["search", "data"], dataList, whereIds, "search")
+
+        data: dict = self.__data["connectedCategorys"].copy()
+        dataList: list = []
+        whereIds: list = []
+        for d in data:
+            whereIds.append(d)
+            dataList.append([d, json.dumps([data[d]])])
+        self.__databaseConnector.insertOrUpdate("connectedCategorys", ["category", "data"], dataList, whereIds, "category")
+
+        #self.__data["user"] = {}
+
+
+
+        self.logger.info("SAVING COMPLETE")
         return True
+
+    def __firstDataLoad(self):
+        pass
 
     def waitFinish(self, threadList: list):
         """
