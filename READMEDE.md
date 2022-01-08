@@ -111,7 +111,7 @@ Es gibt zwei möglichkeiten
 
 ### Add Element
 
-Die beste Methode etwas ins System hinzuzufügen. Nutze ``.adElement()`` um einen Eintrag zu erstellen, folgende Parameter können übergeben werden.
+Die beste Methode etwas ins System hinzuzufügen. Nutze ``.addElement()`` um einen Eintrag zu erstellen, folgende Parameter können übergeben werden.
 
 **Parameter**
 - ``name: str (Importand)`` gebe dem Eintrag einen Namen.
