@@ -23,16 +23,16 @@ for r in disp.get():
 #       scientist.addElement(name=name, extraSearchs=extras, _category=categorys)
 #scientist.recreateIndex()
 
-#print("-------------------------------")
-#rec: Record = scientist.match("Spider")
-#rec.setResult(6)
-#scientist.insertRecord(rec)
-#startTime = time.time()
-#rec: Record = scientist.match("Spider")
-#endTime = time.time()
-#disp = DRec(rec)
-#for r in disp.get():
-#   print(r.name)
-#
-#print("Searched in", endTime - startTime, "s, in ", len(scientist.get("index")), " different data")
-#scientist.save()
+print("-------------------------------")
+rec: Record = scientist.match("Spider")
+rec.setResult(6)
+scientist.insertRecord(rec)
+startTime = time.time()
+rec: Record = scientist.match("Spider")
+endTime = time.time()
+disp = DRec(rec)
+for r in disp.get():
+   print(r.name)
+
+print("Searched in", endTime - startTime, "s, in ", len(scientist.get("index")), " different data")
+scientist.save()

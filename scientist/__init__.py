@@ -88,7 +88,7 @@ class DataScientist:
             # check if set log settings
             if _logSettings is None:
                 # setup default log settings
-                _logSettings = LogSettings("s2")
+                _logSettings = LogSettings("s2.log")
                 _logSettings.setFilemode("w")
             # setup the logger
             self.updateLogger(_logSettings)
@@ -253,7 +253,7 @@ class DataScientist:
         self.set(f"collection.{str(col.id)}", col)
 
     def addElement(self, name: str, extraSearchs: str = "", count: int = 1, relevance: int = 0,
-                   _category: list[str] = None, ignore: bool = False):
+                   _category: list[str] = None, identifikator: int = 0, ignore: bool = False):
         # add a single element to the search
         _id = self.getNextAvailableID("collection")
         if _category is None:
@@ -264,6 +264,7 @@ class DataScientist:
         element["count"] = count
         element["relevance"] = relevance
         element["category"] = _category
+        element["identifikator"] = identifikator
         element["ignore"] = ignore
         col: Collection = Collection(element)
         self.insertCollection(col)
