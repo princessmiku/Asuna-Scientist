@@ -54,6 +54,16 @@ class DatabaseConnector(ABC):
         pass
 
     @abstractmethod
+    def exitsTable(self, table: str) -> bool:
+        """
+        Check if the table exists in the database
+        :param table:
+        :return:
+        """
+        pass
+
+
+    @abstractmethod
     def insert(self, table: str, columns: list[str], values: list[list[any]]):
         """
         :param table:

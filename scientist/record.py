@@ -7,7 +7,7 @@
 # import local things
 from .user import User
 from .collection import Collection
-
+from .displayRecord import DRec
 # import python stuff
 import logging
 from typing import Optional
@@ -55,3 +55,5 @@ class Record:
     def setSearchText(self, text: str):
         self.searchText = text
 
+    def getAsDRec(self, maxShows: int = 25):
+        return DRec(self, maxShows)

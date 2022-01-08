@@ -2,8 +2,7 @@
     A simple Class for display records
 
 """
-# Own Stuff
-from .record import Record
+# Own
 from .collection import Collection
 
 # python stuff
@@ -12,13 +11,13 @@ import math
 
 class DRec:
 
-    def __init__(self, _record: Record, maxShows: int = 25):
+    def __init__(self, _record, maxShows: int = 25):
         """
         Init a display lib
         :param _record:
         :param maxShows: set the amount of shows which you get with "get"
         """
-        self._record: Record = _record
+        self._record = _record
         self.maxShows: int = maxShows
         self.currentIndex: int = 0
         self.lenOfData: int = len(self._record.data)
@@ -37,7 +36,7 @@ class DRec:
         return self._record.data[self.currentIndex:showUp]
 
     # next page, or next page with skip xxx pages
-    def nextPage(self, amount: int =1) -> bool:
+    def nextPage(self, amount: int = 1) -> bool:
         """
         Go to the next page, with or without skip pages
         :param amount: amount of skips, normal 1, 1 = next page

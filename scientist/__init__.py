@@ -97,6 +97,8 @@ class DataScientist:
         self.__data: dict = {}
         # generate default structure
         self.__generate_default_structure()
+        # load data in the default structure
+        self.__load()
 
         # init the index
         self.autoRecreateIndex = autoRecreateIndex
@@ -563,7 +565,7 @@ class DataScientist:
         whereIds: list = []
         for d in data:
             whereIds.append(d)
-            dataList.append([d, json.dumps([data[d]])])
+            dataList.append([d, json.dumps(data[d])])
         self.__databaseConnector.insertOrUpdate("searchConnections", ["search", "data"], dataList, whereIds, "search")
 
         data: dict = self.__data["connectedCategorys"].copy()
@@ -571,7 +573,7 @@ class DataScientist:
         whereIds: list = []
         for d in data:
             whereIds.append(d)
-            dataList.append([d, json.dumps([data[d]])])
+            dataList.append([d, json.dumps(data[d])])
         self.__databaseConnector.insertOrUpdate("connectedCategorys", ["category", "data"], dataList, whereIds, "category")
 
         #self.__data["user"] = {}
@@ -580,6 +582,36 @@ class DataScientist:
 
         self.logger.info("SAVING COMPLETE")
         return True
+
+    def __load(self):
+        """
+        Load the data from the database
+        :return:
+        """
+        self.logger.info("Load data from database")
+
+        # collection
+        data = self.__databaseConnector.get("collection", ["id", "identifier", "name", "category", "extraSearch", "count", "ignore"])
+        entry: list
+        for entry in data:
+            colData = getBaseCollectionDataDict(entry[0], entry[2])
+            colData["extraSearchs"] = entry[4]
+            colData["count"] = entry[5]
+            #colData["relevance"]
+            #colData["lastRelevance"]
+            colData["category"] = json.loads(entry[3])
+            colData["identifikator"] = entry[1]
+            colData["ignore"] = bool(entry[6])
+            col = Collection(colData)
+            self.insertCollection(col)
+
+        data = self.__databaseConnector.get("searchConnections", ["search", "data"])
+        for entry in data:
+            self.__data["searchConnections"][entry[0]] = json.loads(entry[1])
+
+        data = self.__databaseConnector.get("connectedCategorys", ["category", "data"])
+        for entry in data:
+            self.__data["connectedCategorys"][entry[0]] = json.loads(entry[1])
 
     def __firstDataLoad(self):
         pass
