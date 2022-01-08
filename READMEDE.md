@@ -11,6 +11,8 @@ Features
 - Einfaches selbstlernen
 - Der Lernprozzes kan geteilt werden
 
+Beispiel in ``./example``
+
 ----
 
 # Installation

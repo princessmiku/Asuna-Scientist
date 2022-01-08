@@ -12,6 +12,8 @@ Features
 - Easy self learning
 - The learning process can be shared
 
+Example found in `./examples`
+
 ----
 
 # Installation

@@ -8,11 +8,12 @@ import logging
 from logging import FileHandler, Formatter
 import time
 
-
+# "[%(asctime)s] [%(levelname)s]: %(message)s >> %(pathname)s:%(lineno)d"
+# "[%(asctime)s] [%(levelname)s]: %(message)s"
 class LogSettings:
 
     def __init__(self, loggerName: str, filepath: str = "./log/s2.log", filemode="a",
-                 textFmt="[%(asctime)s] [%(levelname)s]: %(message)s >> %(pathname)s:%(lineno)d",
+                 textFmt="[%(asctime)s] [%(levelname)s]: %(message)s",
                  dateFmt="%Y-%m-%d %H:%M:%S", level=logging.DEBUG):
         self.loggerName = loggerName
         self.filepath = filepath
