@@ -101,14 +101,14 @@ class DataScientist:
         self.__load()
 
         # init the index
+        self.recreateIndex(self.__defaultIndexStructure)
         self.autoRecreateIndex = autoRecreateIndex
         self.__autoRecreateThread = None
         if self.autoRecreateIndex:
             self.__autoRecreateThread = threading.Thread(target=self.__autoRecreateIndexLoop, daemon=True)
             self.__autoRecreateThread.start()
         else:
-            self.recreateIndex(self.__defaultIndexStructure)
-
+            self.recreateIndex()
         # running thread list
         self.runningThreads: list[threading.Thread] = []
 
@@ -201,7 +201,6 @@ class DataScientist:
         return int(lastID) + 1
 
     # core
-
     def insert(self, text: str, startAsThread: bool = False, replacer=None) -> Optional[threading.Thread]:
         """
         Think is useless
@@ -559,8 +558,6 @@ class DataScientist:
             dataList.append([col.id, col.identifikator, col.name, json.dumps(col.category),
                              col.extraSearchs, col.count, str(col.ignore)])
         self.__databaseConnector.insertOrUpdate("collection", ["id", "identifier", "name", "category", "extraSearch", "count", "ignore"], dataList, whereIds)
-
-
         data: dict = self.__data["searchConnections"].copy()
         dataList: list = []
         whereIds: list = []

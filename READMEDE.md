@@ -1,4 +1,4 @@
-# Scientist V2
+# Scientist V2 - Asuna
 
 Scientist ist eine selbstlernende suchmaschinen Library. Diese bietet die Möglichkeit Such elemente einzupflegen, welche sie dann auswertet. Sie verfügt über einen selbstlernenden Algorytmus um ergebnisse auf ihre Revelanz zu bestimmen um sie anschließend zu verbessern.
 
