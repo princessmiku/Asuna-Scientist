@@ -1,87 +1,138 @@
 """
-    Example Text
+    Data Scientist V2
+    Created by Miku
+
+    Version: 2.0.0 Alpha
+    Github: https://github.com/princessmiku
+    Project on Github: https://github.com/princessmiku/Scientist
+
+    Example Text generator
     https://www.blindtextgenerator.de/
 """
-import collections
-import difflib
-import itertools, sqlite3, threading, re
+# Own library's
+import json
 
-from .collection import Collection
+from .collection import Collection, getBaseCollectionDataDict
+from .user import User
+from .logSettings import LogSettings
+from .record import Record
+from .databaseConnector import DatabaseConnector
+
+# import python stuff
+import difflib, itertools, sqlite3, threading, re, os, logging, random, time, functools, collections as pyCollections
+from typing import Optional
+
+# external added library's
+import polars
+
+_version = "2.0.0 Alpha"
 
 
-class DatabaseConnector:
+# stuff?
 
-    def __init__(self, location: str, autoCommit: bool = True):
-        self.database: sqlite3.Connection = sqlite3.connect(location)
-        self.autoCommit: bool = autoCommit
 
-    def get(self, table: str, columns: [str, list], where: list = False) -> list:
-        # build the sql str
-        sql_str: str = f"SELECT "
-        if isinstance(columns, list):
-            sql_str += ", ".join(columns)
-        else:
-            sql_str += columns
-        sql_str += f" FROM {table}"
-        if where:
-            if isinstance(where[1], str):
-                sql_str += f" WHERE '{where[1]}'"
-            else:
-                sql_str += f" WHERE {str(where[1])}"
-        return self.database.execute(sql_str).fetchall()
+def threadsafe_function(fn):
+    """
+    decorator making sure that the decorated function is thread safe
+    Quelle: https://stackoverflow.com/questions/1072821/is-modifying-a-class-variable-in-python-threadsafe
+    """
 
-    def set(self, table: str, columns: [str, list], values: [str, list], where: list = False):
-        # build the sql str
-        sql_str: str = f"UPDATE {table} SET "
-        if isinstance(columns, list):
-            saving_values: list = []
-            for z in zip(columns, values):
-                if isinstance(z[0], str):
-                    saving_values.append(f"{z[0]} = '{z[1]}'")
-                else:
-                    saving_values.append(f"{z[0]} = {z[1]}")
-            sql_str += ", ".join(saving_values)
-        else:
-            sql_str += columns + ", " + values
-        sql_str += f" FROM {table}"
-        if where:
-            if isinstance(where[1], str):
-                sql_str += f" WHERE '{where[1]}'"
-            else:
-                sql_str += f" WHERE {str(where[1])}"
-        self.database.execute(sql_str).fetchall()
+    lock = threading.Lock()
 
-        # commit automatically new data
-        if self.autoCommit: self.commit()
+    def new(*args, **kwargs):
+        lock.acquire()
+        try:
+            r = fn(*args, **kwargs)
+        except Exception as e:
+            raise e
+        finally:
+            lock.release()
+        return r
 
-    def commit(self):
-        self.database.commit()
+    return new
 
 
 class DataScientist:
+    # Simple default text for the top of the log
+    __defaultLogTextStart = f"> - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n" \
+                            f"| Data Scientist V2\n" \
+                            f"| Created by Miku\n| \n" \
+                            f"| Version: {_version}\n" \
+                            f"| Github: https://github.com/princessmiku\n" \
+                            f"| Project on Github: https://github.com/princessmiku/Scientist\n" \
+                            f"> - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n"
 
-    def __init__(self, connector: DatabaseConnector, saveDataLocal: bool = True):
-        """
-        :param connector: connector of the database
-        :param saveDataLocal: Daten werden beim starten einmal geladen und
-        anschließend immer in einem Dict abgespeichert, daten werden nicht erneut aus der datenbank gezogen
-        """
-        self.connector: DatabaseConnector = connector
-        self.data: dict = {}
-        self.Collection = Collection
-        self.Collection.dataScientist = self
+    __defaultIndexStructure = {
+        "id": [],
+        "name": [],
+        "extraSearchs": [],
+        "count": [],
+        "relevance": [],
+        "category": []
+    }
 
-    def pointLocationConverter(self, step: str):
-        return step.replace(".", "\&!")
+    logger: logging.Logger = None
+
+    def __init__(self, _databaseConnector: DatabaseConnector, _logSettings: LogSettings = None,
+                 autoRecreateIndex: bool = False):
+        """
+        Init the brain of Scientist
+        :param _logSettings: Log settings, when None it will use the default
+        """
+
+        # set vabs
+        self.__databaseConnector = _databaseConnector
+
+        # check if not logger set
+        if self.logger is None or LogSettings is not None:
+            # check if set log settings
+            if _logSettings is None:
+                # setup default log settings
+                _logSettings = LogSettings("s2.log")
+                _logSettings.setFilemode("w")
+            # setup the logger
+            self.updateLogger(_logSettings)
+        self.logger.info("Init DataScientist")
+
+        self.__data: dict = {}
+        # generate default structure
+        self.__generate_default_structure()
+        # load data in the default structure
+        self.__load()
+
+        # init the index
+        self.recreateIndex(self.__defaultIndexStructure)
+        self.autoRecreateIndex = autoRecreateIndex
+        self.__autoRecreateThread = None
+        if self.autoRecreateIndex:
+            self.__autoRecreateThread = threading.Thread(target=self.__autoRecreateIndexLoop, daemon=True)
+            self.__autoRecreateThread.start()
+        else:
+            self.recreateIndex()
+        # running thread list
+        self.runningThreads: list[threading.Thread] = []
+
+        # complete init
+        self.logger.info("Init complete")
+
+    def __generate_default_structure(self):
+        """
+        This function generate the default used structure for saving
+        :return:
+        """
+        self.logger.debug("Generate default structure")
+        self.__data["collection"] = {}
+        # check if json exists // vorübergehend
+        self.__data["index"] = polars.DataFrame()
+        self.__data["user"] = {}
+        self.__data["searchConnections"] = {}
+        self.__data["connectedCategorys"] = {}
 
     def get(self, location: str) -> [int, str, bool]:
-        """
-        Get Data
-        :param location: data path
-        :return: returns data
-        """
+        # get data from a location
+        self.logger.debug("Get data from " + location)
         location: list = re.split(r"[.]+\b(?<!\\.)", location)
-        data: any = self.data
+        data: any = self.__data
         loc: any
         for step in location:
             if not isinstance(data, dict): break
@@ -90,14 +141,10 @@ class DataScientist:
         return data
 
     def set(self, location: str, data: [int, str, bool]):
-        """
-        Set specific data
-        :param location:
-        :param data:
-        :return:
-        """
+        # set data on location
+        self.logger.debug("Set data at " + location + " data: " + str(data))
         location: list = re.split(r"[.]+\b(?<!\\.)", location)
-        save = self.data
+        save = self.__data
         for count, step in enumerate(location):
             if count != len(location) - 1:
                 if not save.__contains__(step): save[step] = {}
@@ -106,13 +153,10 @@ class DataScientist:
                 save[step] = data
 
     def exists(self, location: str) -> bool:
-        """
-        Get Data
-        :param location: data path
-        :return: returns data
-        """
+        # check if data exits at location
+        self.logger.debug("Check if exists data at " + location)
         location: list = re.split(r"[.]+\b(?<!\\.)", location)
-        data: any = self.data.copy()
+        data: any = self.__data.copy()
         if not data.__contains__(location[0]): return False
         loc: any
         for step in location:
@@ -124,13 +168,11 @@ class DataScientist:
         return True
 
     def remove(self, location: str):
-        """
-        Remove Data
-        :param location: data path
-        """
+        # remove a location with data
+        self.logger.debug("Remove location " + location)
 
         location: list = re.split(r"[.]+\b(?<!\\.)", location)
-        data: any = self.data
+        data: any = self.__data
         loc: any
         for count, step in enumerate(location):
             if not isinstance(data, dict):
@@ -145,276 +187,482 @@ class DataScientist:
                 break
             data = data[step]
 
+    @threadsafe_function
+    def getNextAvailableID(self, location: str) -> int:
+        if not self.exists(location + ".0"):
+            dummy = getBaseCollectionDataDict(0, "Dummy")
+            dummy["ignore"] = True
+            self.set(location + ".0", Collection(dummy))
+        lastID: str = list(self.get(location).keys())[-1]
+        if not lastID.isnumeric():
+            return 0
+        self.set(location + "." + str(int(lastID) + 1), 0)
+        self.logger.debug(f"Current Last id now " + str(int(lastID) + 1))
+        return int(lastID) + 1
 
-    def save(self) -> bool:
+    # core
+    def insert(self, text: str, startAsThread: bool = False, replacer=None) -> Optional[threading.Thread]:
         """
-        Save your data
-        :return: is successful
-        """
-        return True
-
-    def insert(self, text: str, save_under: str = "collection", replacer: list = [], startAsThread: bool = False) -> [None, threading.Thread]:
-        """
-        :param startAsThread:
-        :param replacer:
-        :param save_under:
-        :param text:
+        Think is useless
+        Insert a big text in the search engine, it will separate every word for searching it.
+        :param text: insert text
+        :param startAsThread: should it start as thread for speed up?
+        :param replacer: Replace before insert, like str.replace(), list format is [["a", "b"], ["c", "d"]]
         :return:
         """
 
-        def run(text):
-            for re in replacer:
-                text = text.replace(re[0], re[1])
+        # check if give replace
+        if replacer is None:
+            replacer = []
+
+        # target thread def
+        def run(_text: str):
+            self.logger.debug("Insert text width a len of " + str(len(text)) + " characters")
+            # replace
+            for replace in replacer:
+                _text = _text.replace(replace[0], replace[1])
+            # setup the word list via split
             words: list = text.split(" ")
+            word: str
             for word in words:
-                word = word.replace(".", "\.")
-                if not self.exists(f"{save_under}.{word}"):
-                    col = self.Collection(word, save_under)
-                else:
-                    col = self.get(f"{save_under}.{word}.self")
-                col.addCount()
+                # if a word ends with a point, remove it
+                if word.endswith((".", ",", "!", "?")):
+                    word = word[:-1]
+                word = word.replace(".", "\n")
+                _id: int = self.getNextAvailableID("collection")
+                self.insertCollection(Collection(getBaseCollectionDataDict(_id, word)))
+
+        # check if should start as thread
         if not startAsThread:
             run(text)
-            return None
         else:
+            self.logger.debug("Start text insertion as a thread")
             thread = threading.Thread(target=run, args=(text,), daemon=True)
             thread.start()
             return thread
 
-    def addAInsert(self, text: str, save_under: str = "collection", **kwargs) -> Collection:
-        word = text.replace(".", "\.")
-        if not self.exists(f"{save_under}.{word}"):
-            col = self.Collection(word, save_under, **kwargs)
-        else:
-            col = self.get(f"{save_under}.{word}.self")
-        col.addCount()
-        if kwargs.__contains__("category"):
-            for cat in kwargs["category"]:
-                col.add_category(cat)
-        return col
-
-    def getMatch(self, search: str, location: [str, list], max_matches: int = 1) -> [bool, str]:
+    def insertCollection(self, col: Collection):
         """
-        Suche nach einen Match in der angegeben location, die suche muss nicht einstimmig geschrieben sein,
-        es wird ein passendes ergebnis zu finden. Um ein absolutes match zu finden sollte man exists nutzen.
-
-        :param search:
-        :param location:
-        :return: Das Match oder None wenn nix gefunden wurde
-        """
-        if isinstance(location, str):
-            get_dict: dict = self.get(location)
-            if not isinstance(get_dict, dict): return []
-            search_match: list = difflib.get_close_matches(search, get_dict.keys(), max_matches)
-            if search_match:
-                return_list = []
-                for match in search_match:
-                    return_list.append(get_dict[match]["self"])
-                return return_list
-        elif isinstance(location, list):
-            get_dict: dict = {}
-            col: Collection
-            for col in location:
-                get_dict[col.name] = col
-            search_match: list = difflib.get_close_matches(search, get_dict.keys(), max_matches)
-            if search_match:
-                return_list = []
-                for match in search_match:
-                    return_list.append(get_dict[match])
-                return return_list
-        return []
-
-    def getCollectionsByRelevanceHigherThen(self, relevance: int, location: [str, list]) -> list:
-        is_relevance: list = []
-        if isinstance(location, str):
-            if not self.exists(location): return []
-            objects: dict = self.get(location)
-            for o in objects:
-                if not self.exists(f"{location}.{o}.self"): continue
-                col: Collection = self.get(f"{location}.{o}.self")
-                if col.relevance >= relevance: is_relevance.append(col)
-        elif isinstance(location, list):
-            col: Collection
-            for col in location:
-                if col.relevance >= relevance: is_relevance.append(col)
-        return is_relevance
-
-    def getCollectionsByLastRelevanceCount(self, relevance: int, location: [str, list]) -> list:
-        is_relevance: list = []
-        if isinstance(location, str):
-            if not self.exists(location): return []
-            objects: dict = self.get(location)
-            is_relevance: list = []
-            for o in objects:
-                if not self.exists(f"{location}.{o}.self"): continue
-                col: Collection = self.get(f"{location}.{o}.self")
-                if col.get_last_relevance_count() >= relevance: is_relevance.append(col)
-        elif isinstance(location, list):
-            col: Collection
-            for col in location:
-                if col.get_last_relevance_count() >= relevance: is_relevance.append(col)
-        return is_relevance
-
-    def getCollectionsByCategory(self, category: [str, list], location: [str, list]) -> list:
-        category_objects: list = []
-        if isinstance(location, str):
-            if not self.exists(location): return []
-            objects: dict = self.get(location)
-            if isinstance(category, str): category = [category]
-            for o in objects:
-                if not self.exists(f"{location}.{o}.self"): continue
-                col: Collection = self.get(f"{location}.{o}.self")
-                if col.have_category(category): category_objects.append(col)
-        elif isinstance(location, list):
-            if isinstance(category, str): category = [category]
-            col: Collection
-            for col in location:
-                if col.have_category(category): category_objects.append(col)
-        return category_objects
-
-    def getSearchCollections(self, to_search: str, location: [str, list]) -> list:
-        """
-        Diese funktion sucht aus angegeben den parametern das passende ergebnis
-        - name
-        - category
-        - search text
-
-        Sortiert nach der Allgemeinen Relevanz des Produktes und angeschlagen den Suchkriterien
-
-        Sollte ein Produkt auf ignore stehen wird dieses Systematisch ausgeschlossen
-        :param to_search:
-        :param location:
-        :return: eine liste mit den gefundenen Collections
-        """
-
-        if isinstance(location, list):
-            data = location
-        else:
-            if not self.exists(location): return []
-            get_dict = self.get(location)
-            data = []
-            for x in get_dict:
-                if self.exists(f"{location}.{x}.self"): data.append(self.get(f"{location}.{x}.self"))
-
-        matches = {
-            "name": [],
-            "category": [],
-            "other": []
-        }
-        col: Collection
-        threads = []
-        for col in data:
-            def run():
-                searched = set(to_search.split(" "))
-                split_name = col.name.split(" ")
-                search_text = col.get_search_text()
-                founded_names = []
-                founded_category = []
-                founded_others = []
-                for s in searched:
-                    match = difflib.get_close_matches(s, split_name)  # search in name
-                    if match:
-                        founded_names += match
-                    if col.have_category_searching(s):  # search in category
-                        founded_category.append(s)
-                    match = difflib.get_close_matches(s, search_text)  # search in search text
-                    if match:
-                        founded_others.append(match)
-                if len(founded_names) / len(split_name) >= 0.5:
-                    matches["name"].append(col)
-                if founded_category:
-                    matches["category"].append(col)
-                else:
-                    if col.have_category_searching(to_search):
-                        matches["category"].append(col)
-                if len(founded_others) / len(search_text) >= 0.15:
-                    matches["other"].append(col)
-            # Starten als Thread für die schnellere suche
-            thread = threading.Thread(target=run, daemon=True)
-            thread.start()
-            threads.append(thread)
-        self.waitFinish(threads)
-        relevance_one = []
-        relevance_two = []
-        relevance_three = []
-
-        threads.clear()
-
-        def matches_for_name():
-            for col in matches["name"]:
-                if matches["name"].__contains__(col) and matches["category"].__contains__(col) and matches["other"].__contains__(col):
-                    relevance_one.append(col)
-                elif matches["name"].__contains__(col) and matches["category"].__contains__(col) and not matches["other"].__contains__(col):
-                    relevance_one.append(col)
-                elif matches["name"].__contains__(col):
-                    relevance_two.append(col)
-        threads.append(threading.Thread(target=matches_for_name, daemon=True))
-
-        def matches_for_category():
-            for col in matches["category"]:
-                if not matches["name"].__contains__(col) and matches["category"].__contains__(col) and matches["other"].__contains__(col):
-                    relevance_two.append(col)
-                elif not matches["name"].__contains__(col) and matches["category"].__contains__(col) and not matches["other"].__contains__(col):
-                    relevance_two.append(col)
-        threads.append(threading.Thread(target=matches_for_category, daemon=True))
-
-        def matches_for_other():
-            for col in matches["other"]:
-                if not matches["name"].__contains__(col) and not matches["category"].__contains__(col) and not matches["other"].__contains__(col):
-                    relevance_three.append(col)
-        threads.append(threading.Thread(target=matches_for_other, daemon=True))
-        for thread in threads:
-            thread.start()
-        self.waitFinish(threads)
-
-        def sortFunc(col: Collection):
-            return col.relevance_count()
-        relevance_one.sort(key=sortFunc, reverse=True)
-        relevance_two.sort(key=sortFunc, reverse=True)
-        relevance_three.sort(key=sortFunc, reverse=True)
-        sorted_return: list = relevance_one + relevance_two + relevance_three
-        return sorted_return
-
-    def getSearchCollectionsWithCounterCheck(self, to_search, location_one: [str, list],
-        location_two: [str, list]) -> list:
-        """
-        Search Collections mit der möglichkeit einer personalisierten suche
-        durch entfernung irrelevanter Ergebnisse in einem Abgleich
-        :param to_search: Was wird gesucht
-        :param location_one: Datensatz für die Filterung
-        :param location_two: Allgemeiner Datensatz
+        Add insert a collection, its overwrite if collection already exists
+        :param col:
         :return:
         """
-        if isinstance(location_one, list):
-            data_one: list = location_one
-        else:
-            if not self.exists(location_one): return []
-            get_dict: dict = self.get(location_one)
-            data_one: list = []
-            for x in get_dict:
-                if self.exists(f"{location_one}.{x}.self"): data_one.append(self.get(f"{location_one}.{x}.self"))
+        self.logger.debug("Insert Collection named \"" + col.name + "\" with ID: " + str(col.id))
+        # set the collection
+        self.set(f"collection.{str(col.id)}", col)
 
-        col_names_two: list = []
-        if isinstance(location_two, list):
-            col: Collection
-            for col in data_one:
-                col_names_two.append(col.name)
-        else:
-            if not self.exists(location_two): return []
-            col_names_two: list = list(self.get(location_two).keys())
+    def addElement(self, name: str, extraSearchs: str = "", count: int = 1, relevance: int = 0,
+                   _category: list[str] = None, identifikator: int = 0, ignore: bool = False):
+        # add a single element to the search
+        _id = self.getNextAvailableID("collection")
+        if _category is None:
+            _category = []
+        self.logger.debug(f"Add element with name \"{name}\"")
+        element: dict = getBaseCollectionDataDict(_id, name)
+        element["extraSearchs"] = extraSearchs
+        element["count"] = count
+        element["relevance"] = relevance
+        element["category"] = _category
+        element["identifikator"] = identifikator
+        element["ignore"] = ignore
+        col: Collection = Collection(element)
+        self.insertCollection(col)
 
-        check_data = []
-        data: Collection
-        for data in data_one:
-            if data.ignore: continue
-            if col_names_two.__contains__(data.name): check_data.append(data)
-        return self.getSearchCollections(to_search, check_data)
+    def removeElement(self):
+        # remove a single element
+        self.logger.debug("Remove element ")
+        pass
+
+    # learning
+    @threadsafe_function
+    def __addSCEntry(self, text: str, chosen: str = None):
+        text = text.lower()
+        if not self.__data["searchConnections"].__contains__(text):
+            self.__data["searchConnections"][text] = {}
+        if chosen:
+            chosen = chosen.lower()
+            if not self.__data["searchConnections"][text].__contains__(chosen):
+                self.__data["searchConnections"][text][chosen] = 0
+            self.__data["searchConnections"][text][chosen] += 1
+
+    def __existsSCEntry(self, text: str, otherText: str = None) -> bool:
+        text = text.lower()
+        if otherText is None:
+            return self.__data["searchConnections"].__contains__(text)
+        otherText = otherText.lower()
+        if self.__data["searchConnections"].__contains__(text):
+            return self.__data["searchConnections"][text].__contains__(otherText)
+        return False
+
+    def __checkSCEntryDiff(self, text: str, otherText: str) -> [str, int]:
+        text = text.lower()
+        matches = difflib.get_close_matches(text, list(self.__data["searchConnections"].keys()))
+        if matches:
+            matches2 = difflib.get_close_matches(otherText, list(self.__data["searchConnections"][matches[0]]))
+            if matches2:
+                return matches2[0], self.__data["searchConnections"][matches[0]][matches2[0]]
+        return None, None
+
+    @threadsafe_function
+    def __addCCEntry(self, name: str, values: list[str]):
+        name = name.lower()
+        if not self.__data["connectedCategorys"].__contains__(name):
+            self.__data["connectedCategorys"][name] = {}
+        v: str
+        for v in values:
+            v = v.lower()
+            if not self.__data["connectedCategorys"][name].__contains__(v):
+                self.__data["connectedCategorys"][name][v] = 0
+            self.__data["connectedCategorys"][name][v] += 1
+            if not self.__data["connectedCategorys"].__contains__(v):
+                self.__data["connectedCategorys"][v] = {}
+            if not self.__data["connectedCategorys"][v].__contains__(name):
+                self.__data["connectedCategorys"][v][name] = 0
+            self.__data["connectedCategorys"][v][name] += 1
+
+    def insertRecord(self, _record: Record):
+        """
+        Insert the finish record for learn the algorithm
+        This Function work as a thread for maximum speed
+        So is can be that this thread are not finish when you are finish
+        :param _record:
+        :return: the working thread
+        """
+
+        result = _record.getResult()
+        # check is a result, for work with it
+        if result is None: return
+        self.logger.debug("init and start thread in insertRecord for search text \"" +
+                          _record.searchText + "\" and the result " + str(result.id)
+                          )
+        # search Connections, add results for the search
+        self.__addSCEntry(_record.searchText, result.name)
+        # category connections
+        self.__addCCEntry(_record.searchText, result.category)
+
+    # searching
+    def match(self, search: str, _user: [User, int] = None) -> Record:
+        """
+        Search in your data for the best matches, contains self learning
+        :param search: Search text
+        :param _user: Specific user, only require for user personalisation results
+        :return:
+        """
+
+        # setup data
+        index: polars.DataFrame = self.get("index")
+        result: dict = {}
+        names: polars.Series = index.name
+        extraSearchs: polars.Series = index.extraSearchs
+        categorysList: polars.Series = index.category
+        # counter
+        c: int
+        # split the search
+        toSearch: list = search.split(" ")
+        # split words in name/extra
+        n: str
+        e: str
+        for c in range(len(names)):
+            name: list[str] = names[c].split(" ")
+            extras: list[str] = extraSearchs[c].split(" ")
+            category: list[str] = categorysList[c]
+            nC: int = 0
+            eC: int = 0
+            cC: int = 0
+            thisSearchN: list[str] = toSearch.copy()
+            thisSearchE: list[str] = toSearch.copy()
+
+            for n in name:
+                matches: list = difflib.get_close_matches(n, thisSearchN)
+                if matches:
+                    nC += difflib.SequenceMatcher(None, n, matches[0]).ratio()
+                    # thisSearchN.remove(matches[0])
+            for e in extras:
+                matches: list = difflib.get_close_matches(e, thisSearchE)
+                if matches:
+                    eC += difflib.SequenceMatcher(None, e, matches[0]).ratio()
+                    # thisSearchE.remove(matches[0])
+
+            usedCats: list[str] = []
+            cat: str
+            ifBreak: bool = False
+            for cat in category:
+                matches: list = difflib.get_close_matches(cat, toSearch)
+                if matches:
+                    cC += difflib.SequenceMatcher(None, cat, matches[0]).ratio()
+                    break
+                if not self.__data["connectedCategorys"].__contains__(cat.lower()): continue
+                subCategorys: list[str] = self.__data["connectedCategorys"][cat.lower()]
+                for subC in subCategorys:
+                    if usedCats.__contains__(subC): continue
+                    usedCats.append(subC)
+                    matches: list = difflib.get_close_matches(subC, category)
+                    if matches:
+                        cC += difflib.SequenceMatcher(None, subC, matches[0]).ratio()
+                        ifBreak = True
+                        break
+                if ifBreak: break
+            finalCount: float = nC + eC + cC
+            if finalCount > 0:
+                joinedName: str = " ".join(name)
+                movieCount = difflib.SequenceMatcher(None, joinedName, search).ratio()
+                if joinedName.__contains__(search):
+                    movieCount += 1
+                movieCount += difflib.SequenceMatcher(None, extras, search).ratio()
+                movieCount += cC
+                matchName, addCount = self.__checkSCEntryDiff(search, joinedName)
+                if matchName:
+                    matchPercent = difflib.SequenceMatcher(None, joinedName, matchName).ratio()
+                    if matchPercent >= 0.72:  # spider percent
+                        movieCount += addCount * matchPercent
+
+                if not result.__contains__(movieCount):
+                    result[movieCount] = []
+                result[movieCount].append(self.get("collection." + str(index.id[c])))
+        result = dict(pyCollections.OrderedDict(sorted(result.items(), reverse=True)))
+        return Record(search, [item for sublist in result.values() for item in sublist], _user)
+
+    # searching
+    def matchNSLD(self, search: str) -> Record:
+        """
+        NSLD = Not self learning data
+        Search in your data for the best matches, without the learning thinks
+        :param search: search text
+        :return:
+        """
+        # setup data
+        index: polars.DataFrame = self.get("index")
+        result: dict = {}
+        names: polars.Series = index.name
+        extraSearchs: polars.Series = index.extraSearchs
+        # counter
+        c: int
+        # split the search
+        toSearch: list = search.split(" ")
+        # split words in name/extra
+        n: str
+        e: str
+        for c in range(len(names)):
+            name: list[str] = names[c].split(" ")
+            extras: list[str] = extraSearchs[c].split(" ")
+            nC: int = 0
+            eC: int = 0
+            thisSearchN: list[str] = toSearch.copy()
+            thisSearchE: list[str] = toSearch.copy()
+            for n in name:
+                matches: list = difflib.get_close_matches(n, thisSearchN)
+                if matches:
+                    nC += difflib.SequenceMatcher(None, n, matches[0]).ratio()
+                    # thisSearchN.remove(matches[0])
+            for e in extras:
+                matches: list = difflib.get_close_matches(e, thisSearchE)
+                if matches:
+                    eC += difflib.SequenceMatcher(None, e, matches[0]).ratio()
+                    # thisSearchE.remove(matches[0])
+            finalCount: float = nC + eC
+            if finalCount > 0:
+                if not result.__contains__(finalCount):
+                    result[finalCount] = []
+                result[finalCount].append(self.get("collection." + str(index.id[c])))
+        result = dict(pyCollections.OrderedDict(sorted(result.items(), reverse=True)))
+        return Record(search, [item for sublist in result.values() for item in sublist], User(user.defaultStructure))
+
+    # index
+    @threadsafe_function
+    def recreateIndex(self, indexData=None):
+        """
+        Re create the search index, this index is important for the searchs
+        so hold it up to date.
+
+        The Script will update the Index each time when is starting. But long time ago it can be old.
+
+        Or activate auto recreate Indexing on start
+        :param indexData: give the index specific data for create a specific index, not recommended!
+        :return:
+        """
+        if indexData is None:
+            indexData = {}
+        self.logger.info("Recreate the Index")
+
+        # df: polars.DataFrame = self.__data["index"]
+        # vorübergehendes speichern
+
+        index: dict = {
+            "id": [],
+            "name": [],
+            "extraSearchs": [],
+            "count": [],
+            "relevance": [],
+            "category": []
+        }
+        values: dict = self.get("collection").copy()
+        if values.__contains__("0"):
+            values.pop("0")
+        _id: str
+        for _id in values:
+            col: Collection = values[_id]
+            index["id"].append(col.id)
+            index["name"].append(col.name)
+            index["extraSearchs"].append(col.extraSearchs)
+            index["count"].append(float(col.count))
+            index["relevance"].append(float(col.relevance))
+            index["category"].append(col.category)
+
+        self.__data.__setitem__("index", polars.DataFrame(index))
+
+        self.logger.info("Recreate success")
+
+    def __autoRecreateIndexLoop(self, cooldown: int = 60000):
+        """
+        Auto recreate index function
+        It will recreate all 10 minutes the index
+        :param cooldown:
+        :return:
+        """
+
+        self.logger.debug("Start the auto recreate loop")
+        while self.autoRecreateIndex:
+            self.recreateIndex()
+            time.sleep(cooldown)
+
+    # cleaning
+    def cleanUp(self):
+        """
+        Clean your data, it will remove invalid entry or old data what are no longer in use
+        like a deleted element, it will sorting all data new correctly, do not add new element in this time
+        it can be deleted!.
+
+        This process can take long time
+        :return:
+        """
+        pass
+
+    # getter setter
+    def getData(self) -> dict:
+        # get all data of this class
+        self.logger.debug("Get ALL data")
+        return self.__data
+
+    # save and load
+    def save(self) -> bool:
+        # save all data
+        self.logger.info("SAVE")
+
+        data: dict = self.__data["collection"].copy()
+        dataList: list = []
+        whereIds: list = []
+        col: Collection
+        for col in data:
+            col = data[col]
+            whereIds.append(col.id)
+            dataList.append([col.id, col.identifikator, col.name, json.dumps(col.category),
+                             col.extraSearchs, col.count, str(col.ignore)])
+        self.__databaseConnector.insertOrUpdate("collection", ["id", "identifier", "name", "category", "extraSearch", "count", "ignore"], dataList, whereIds)
+        data: dict = self.__data["searchConnections"].copy()
+        dataList: list = []
+        whereIds: list = []
+        for d in data:
+            whereIds.append(d)
+            dataList.append([d, json.dumps(data[d])])
+        self.__databaseConnector.insertOrUpdate("searchConnections", ["search", "data"], dataList, whereIds, "search")
+
+        data: dict = self.__data["connectedCategorys"].copy()
+        dataList: list = []
+        whereIds: list = []
+        for d in data:
+            whereIds.append(d)
+            dataList.append([d, json.dumps(data[d])])
+        self.__databaseConnector.insertOrUpdate("connectedCategorys", ["category", "data"], dataList, whereIds, "category")
+
+        #self.__data["user"] = {}
+
+
+
+        self.logger.info("SAVING COMPLETE")
+        return True
+
+    def __load(self):
+        """
+        Load the data from the database
+        :return:
+        """
+        self.logger.info("Load data from database")
+
+        # collection
+        data = self.__databaseConnector.get("collection", ["id", "identifier", "name", "category", "extraSearch", "count", "ignore"])
+        entry: list
+        for entry in data:
+            colData = getBaseCollectionDataDict(entry[0], entry[2])
+            colData["extraSearchs"] = entry[4]
+            colData["count"] = entry[5]
+            #colData["relevance"]
+            #colData["lastRelevance"]
+            colData["category"] = json.loads(entry[3])
+            colData["identifikator"] = entry[1]
+            colData["ignore"] = bool(entry[6])
+            col = Collection(colData)
+            self.insertCollection(col)
+
+        data = self.__databaseConnector.get("searchConnections", ["search", "data"])
+        for entry in data:
+            self.__data["searchConnections"][entry[0]] = json.loads(entry[1])
+
+        data = self.__databaseConnector.get("connectedCategorys", ["category", "data"])
+        for entry in data:
+            self.__data["connectedCategorys"][entry[0]] = json.loads(entry[1])
+
+    def __firstDataLoad(self):
+        pass
 
     def waitFinish(self, threadList: list):
         """
-        :param threadList:
+        This function is a easy way for waiting that the threads are finished
+        :param threadList: a list with threads
         :return:
         """
+        threadIdentifikator: int = random.randint(100000, 9999999)
+        self.logger.debug(f"[{str(threadIdentifikator)}] Start waiting on {str(len(threadList))} threads")
         t: threading.Thread
+        # join all thread and listen is finish
         for t in threadList:
             t.join()
+        self.logger.debug(f"[{str(threadIdentifikator)}] Finish waiting on threads")
+
+    def updateLogger(self, _logSettings: LogSettings):
+        """
+        Update the log modul for ALL
+        :param _logSettings:
+        :return:
+        """
+        if self.logger is not None:
+            self.logger.warning("Setup a new Logging module")
+
+        # get the path of the log
+        logPath: str = _logSettings.filepath.rsplit("/", 1)[0]
+        # check if the folder exists when not create the folder
+        if not os.path.exists(logPath):
+            os.mkdir(logPath)
+        # check if a logging file exists when not create a default log file layout
+        if not os.path.isfile(_logSettings.filepath):
+            with open(_logSettings.filepath, mode=_logSettings.filemode) as f:
+                f.write(self.__defaultLogTextStart)
+                f.close()
+        elif _logSettings.filemode == "w":
+            with open(_logSettings.filepath, mode=_logSettings.filemode) as f:
+                f.write(self.__defaultLogTextStart)
+                f.close()
+        # init the log config on the logger
+        _logSettings.initConfig()
+        self.logger = _logSettings.logger
+        # open the log file, enter the start of the new beginning, ignore log layout
+        with open(_logSettings.filepath, mode='a') as f:
+            f.write(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] Starting a new log\n\n")
+            f.close()
+
+        # Set the logger
+        Collection.logger = self.logger
+        DatabaseConnector.logger = self.logger
+        Record.logger = self.logger
+
+        # finish
+        self.logger.debug("Logging module successfully loaded")

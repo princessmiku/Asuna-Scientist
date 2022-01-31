@@ -1,0 +1,41 @@
+> - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+| Data Scientist V2
+| Created by Miku
+| 
+| Version: 2.0.0 Alpha
+| Github: https://github.com/princessmiku
+| Project on Github: https://github.com/princessmiku/Scientist
+> - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+[2022-01-08 20:39:34] Starting a new log
+
+[2022-01-08 20:39:34] [DEBUG]: Logging module successfully loaded
+[2022-01-08 20:39:34] [INFO]: Init DataScientist
+[2022-01-08 20:39:34] [DEBUG]: Generate default structure
+[2022-01-08 20:39:34] [INFO]: Load data from database
+[2022-01-08 20:39:34] [DEBUG]: Start the auto recreate loop
+[2022-01-08 20:39:34] [INFO]: Init complete
+[2022-01-08 20:39:34] [INFO]: Recreate the Index
+[2022-01-08 20:39:34] [DEBUG]: Check if exists data at collection.0
+[2022-01-08 20:39:34] [DEBUG]: Get data from collection
+[2022-01-08 20:39:34] [DEBUG]: Set data at collection.0 data: <scientist.collection.Collection object at 0x000001FB40A6E940>
+[2022-01-08 20:39:34] [INFO]: Recreate success
+[2022-01-08 20:39:34] [DEBUG]: Get data from collection
+[2022-01-08 20:39:34] [DEBUG]: Set data at collection.1 data: 0
+[2022-01-08 20:39:34] [DEBUG]: Current Last id now 1
+[2022-01-08 20:39:34] [DEBUG]: Add element with name "Cars"
+[2022-01-08 20:39:34] [DEBUG]: Insert Collection named "Cars" with ID: 1
+[2022-01-08 20:39:34] [DEBUG]: Set data at collection.1 data: <scientist.collection.Collection object at 0x000001FB40A6EA60>
+[2022-01-08 20:39:34] [DEBUG]: Check if exists data at collection.0
+[2022-01-08 20:39:34] [DEBUG]: Get data from collection
+[2022-01-08 20:39:34] [DEBUG]: Set data at collection.2 data: 0
+[2022-01-08 20:39:34] [DEBUG]: Current Last id now 2
+[2022-01-08 20:39:34] [DEBUG]: Add element with name "Iron Man"
+[2022-01-08 20:39:34] [DEBUG]: Insert Collection named "Iron Man" with ID: 2
+[2022-01-08 20:39:34] [DEBUG]: Set data at collection.2 data: <scientist.collection.Collection object at 0x000001FB40A6E9A0>
+[2022-01-08 20:39:34] [INFO]: Recreate the Index
+[2022-01-08 20:39:34] [DEBUG]: Get data from collection
+[2022-01-08 20:39:34] [INFO]: Recreate success
+[2022-01-08 20:39:34] [DEBUG]: Get data from index
+[2022-01-08 20:39:34] [DEBUG]: Get data from collection.1
+[2022-01-08 20:39:34] [DEBUG]: init and start thread in insertRecord for search text "Cars" and the result 1
