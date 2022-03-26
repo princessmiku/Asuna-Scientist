@@ -180,15 +180,14 @@ A record contains all found results sorted by importance, this is also important
 
 **Important & Interesting Functions**
 
-| Function | Description | Optional parameters
-| ---- | ---- | ---- | 
-| `setResult(index)` | Set which result was selected |
-| `clearResult()` | Set the result back to 0 | |
-| `getResult()` | Get the result as `Collection` | |
-| `getUser()` | Get the user of the record | |
-| `setSearchText()` | Overwrite the text searched with `match > search` |
-| `getAsDRec()` | Get the record as `DRec` to display it user friendly | `maxShows = int`
-
+| Function           | Description                                          | Optional parameters |
+|--------------------|------------------------------------------------------|---------------------| 
+| `setResult(index)` | Set which result was selected                        |                     |
+| `clearResult()`    | Set the result back to 0                             |                     |
+| `getResult()`      | Get the result as `Collection`                       |                     |
+| `getUser()`        | Get the user of the record                           |                     |
+| `setSearchText()`  | Overwrite the text searched with `match > search`    |                     |
+| `getAsDRec()`      | Get the record as `DRec` to display it user friendly | `maxShows = int`    |
 
 ### DRec - Display Record
 
@@ -208,13 +207,13 @@ It is possible to initialize using one of the 4 options.
 
 **Functions**
 
-| function | description | optional parameters | return |
-| ---- | ---- | ---- | ---- |
-| `get()` | Get the current page elements | | list with collections |
-| `nextPage()` ` Go to the next page | `amount = 1` specify how many pages to skip | `bool`
-| `previousPage()` | Go to the page before | `amount = 1` specify how many pages to skip | `bool` |
-| `addIndex()` | - | `amount = 1` how much to add | `bool` |
-| `removeIndex()` | - | `amount = 1` how much to remove | `bool` |
+| function                           | description                                 | optional parameters                         | return                |
+|------------------------------------|---------------------------------------------|---------------------------------------------|-----------------------|
+| `get()`                            | Get the current page elements               |                                             | list with collections |
+| `nextPage()` ` Go to the next page | `amount = 1` specify how many pages to skip | `bool`                                      |                       |
+| `previousPage()`                   | Go to the page before                       | `amount = 1` specify how many pages to skip | `bool`                |
+| `addIndex()`                       | -                                           | `amount = 1` how much to add                | `bool`                |
+| `removeIndex()`                    | -                                           | `amount = 1` how much to remove             | `bool`                |
 
 
 The index is the number of the first element from which the displayed elements will be counted, it is possible to move it.

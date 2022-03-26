@@ -13,23 +13,31 @@ somit kann man dann eigene Table Namen und Column Namen vergeben, womit das syst
 
 Name: `collection`
 
-| name | type | type in python |
-| ---- | ---- | ---- |
-| id | integer | int |
-| identifier | integer | int |
-| name | string | str |
-| category | string | json / list |
-| extraSearch | string | str |
-| count | integer | int |
-| ignore | string | bool |
+| name        | type    | type in python |
+|-------------|---------|----------------|
+| id          | integer | int            |
+| identifier  | integer | int            |
+| name        | string  | str            |
+| category    | string  | json / list    |
+| extraSearch | string  | str            |
+| count       | integer | int            |
+| ignore      | string  | bool           |
 
 ### User
 
 Name: `user`
 
-| name | type | type in python |
-| ---- | ---- | ---- |
-| noch | nicht | eingefügt |
+User ist eine separierte datenbank anbindung, da dieses effizienter ist
+
+| name       | type    | type in python |
+|------------|---------|----------------|
+| id         | integer | int            |
+| identifier | string  | str            |
+| likes      | string  | json           |
+| dislikes   | string  | json           |
+| interested | string  | json           |
+| ignored    | string  | list           |
+
 
 _in entwicklung_
 
@@ -38,16 +46,16 @@ _in entwicklung_
 
 Name: `searchConnections`
 
-| name | type | type in python |
-| ---- | ---- | ---- |
-| name | string | str |
-| data | string | json / dict |
+| name | type   | type in python |
+|------|--------|----------------|
+| name | string | str            |
+| data | string | json / dict    |
 
 # Connected Categorys
 
 Name: `connectedCategorys`
 
-| name | type | type in python |
-| ---- | ---- | ---- |
-| name | string | str |
-| data | string | json / dict |
+| name | type   | type in python |
+|------|--------|----------------|
+| name | string | str            |
+| data | string | json / dict    |
