@@ -9,21 +9,23 @@ Nebenbei wird geschrieben wie folgendes auch in python genutzt wird.
 Im Laufe der Zeit wird die möglichkeit der Personalisierung aller Variablen in diesem System nachgerüstet, 
 somit kann man dann eigene Table Namen und Column Namen vergeben, womit das system arbeitet.
 
+Beispiel datenbanken in form von sqlite befinden sich in ``exampels/databases/``
+
 ### Collection
 
 Name: `collection`
 
 Database: `s2data.db`
 
-| name        | type    | type in python |
-|-------------|---------|----------------|
-| id          | integer | int            |
-| identifier  | integer | int            |
-| name        | string  | str            |
-| category    | text    | json / list    |
-| extraSearch | string  | str            |
-| count       | integer | int            |
-| ignore      | string  | bool           |
+| name         | type        | extra settings                 | type in python |
+|--------------|-------------|--------------------------------|----------------|
+| id           | integer     | unique, primary, autoincrement | int            |
+| identifier   | string(255) | default = 0                    | str            |
+| name         | string(255) |                                | str            |
+| category     | text / json | default = []                   | list           |
+| extra_search | text        |                                | str            |
+| count        | integer     | default = 0                    | int            |
+| ignore       | int / bool  | default = 0 / False            | bool           |
 
 ### User
 
@@ -33,15 +35,15 @@ Database: `user.db`
 
 User ist eine separierte datenbank anbindung, da dieses effizienter ist
 
-| name         | type    | extra settings | type in python |
-|--------------|---------|----------------|----------------|
-| id           | integer |                | int            |
-| identifier   | string  |                | str            |
-| likes        | text    |                | json           |
-| dislikes     | text    |                | json           |
-| interested   | text    |                | json           |
-| uninterested | text    |                | json           |
-| ignored      | string  |                | list           |
+| name         | type        | extra settings      | type in python |
+|--------------|-------------|---------------------|----------------|
+| id           | integer     | primary key, unique | int            |
+| identifier   | string(255) |                     | str            |
+| likes        | text / json | default={}          | dict           |
+| dislikes     | text / json | default={}          | dict           |
+| interested   | text / json | default={}          | dict           |
+| uninterested | text / json | default={}          | dict           |
+| ignored      | text / json | default=[]          | list           |
 
 
 `ignored` ignoriert die Collections, keine verbindungen
@@ -51,22 +53,22 @@ _in entwicklung_
 
 ### Search Connections
 
-Name: `searchConnections`
+Name: `search_connections`
 
 Database: `s2data.db`
 
-| name | type   | type in python |
-|------|--------|----------------|
-| name | string | str            |
-| data | text   | json / dict    |
+| name | type        | extra settings      | type in python |
+|------|-------------|---------------------|----------------|
+| name | string(127) | primary key, unique | str            |
+| data | text / json | default = {}        | dict           |
 
 # Connected Categorys
 
-Name: `connectedCategorys`
+Name: `connected_categorys`
 
 Database: `s2data.db`
 
-| name | type   | type in python |
-|------|--------|----------------|
-| name | string | str            |
-| data | text   | json / dict    |
+| name | type        | extra settings      | type in python |
+|------|-------------|---------------------|----------------|
+| name | string      | primary key, unique | str            |
+| data | text / json | default = {}        | dict           |

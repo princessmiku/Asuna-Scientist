@@ -40,7 +40,7 @@ Before starting the script, the database must already have been created.
 
 ````python
 import scientist
-from scientist.databaseConnectorSQLite import DCSqlite # example database connector
+from scientist import DCSqlite  # example database connector
 
 dbConnector = DCSqlite("./mydb.db")
 sc = scientist.DataScientist(dbConnector)
@@ -59,14 +59,15 @@ Only one logger per Python script is possible in the library, if you change it, 
 **Example**
 
 ````python
-from scientist.logSettings import LogSettings
+from scientist import LogSettings
 import logging
+
 logSet = LogSettings(
-    loggerName = "logger scientist",
-    filepath = "./s2.log", 
+    loggerName="logger scientist",
+    filepath="./s2.log",
     filemode="a",
     textFmt="[%(asctime)s] [%(levelname)s]: %(message)s >> %(pathname)s:%(lineno)d",
-    dateFmt="%Y-%m-%d %H:%M:%S", 
+    dateFmt="%Y-%m-%d %H:%M:%S",
     level=logging.DEBUG
 )
 ````

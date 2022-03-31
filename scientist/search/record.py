@@ -5,9 +5,9 @@
 
 """
 # import local things
-from .user import User
-from .collection import Collection
 from .displayRecord import DRec
+from ..datahandler.dtos_S2Data import Collection
+from ..datahandler.dtos_users import User
 # import python stuff
 import logging
 from typing import Optional

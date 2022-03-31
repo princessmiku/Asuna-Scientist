@@ -3,7 +3,7 @@
 """
 import scientist
 from scientist import LogSettings, Record, Collection
-from scientist.databaseConnectorSQLite import DCSqlite
+from scientist import DCSqlite
 
 dbConnector = DCSqlite("mydb.db")
 logSet = LogSettings("logger scientist", filemode="w")
