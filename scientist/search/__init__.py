@@ -313,6 +313,7 @@ class DataScientist:
         :param _user: Specific user, only require for user personalisation results
         :return:
         """
+        search = search.lower()
         # setup data
         index: dict = self.get("index")
         result: dict = {}
@@ -377,11 +378,9 @@ class DataScientist:
             finalCount: float = nC + eC + cC
             if finalCount > 0:
                 joinedName: str = " ".join(name).lower()
-                movieCount = 0
-                # if joinedName.__contains__(search):
-                #     movieCount += 1
-                if nC > 0.8:
-                    nC *= 2
+                movieCount = difflib.SequenceMatcher(None, search, joinedName).ratio()
+                if joinedName.__contains__(search):
+                    movieCount += 1
                 movieCount += nC
                 movieCount += difflib.SequenceMatcher(None, extras, search).ratio()
                 movieCount += cC
