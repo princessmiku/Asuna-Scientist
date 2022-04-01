@@ -12,11 +12,11 @@
 # Own library's
 import json
 
+from ..datahandler.dtos_S2Data import Collection, SearchConnections, ConnectedCategorys
+from ..datahandler.dtos_users import User
 from ..datahandler.dhSetup import s2Session, userSession, get_or_create
 from ..search.logSettings import LogSettings
 from ..search.record import Record
-from ..datahandler.dtos_users import User
-from ..datahandler.dtos_S2Data import Collection, SearchConnections, ConnectedCategorys
 from sqlalchemy.orm.attributes import flag_modified
 
 # import python stuff
@@ -322,13 +322,13 @@ class DataScientist:
         # counter
         c: int
         # split the search
-        toSearch: list = search.split(" ")
+        toSearch: list = search.lower().split(" ")
         # split words in name/extra
         n: str
         e: str
         for c in range(len(names)):
-            name: list[str] = names[c].split(" ")
-            extras: list[str] = extraSearchs[c].split(" ")
+            name: list[str] = names[c].lower().split(" ")
+            extras: list[str] = extraSearchs[c].lower().split(" ")
             category: list[str] = categorysList[c]
             nC: int = 0
             eC: int = 0
@@ -339,7 +339,15 @@ class DataScientist:
             for n in name:
                 matches: list = difflib.get_close_matches(n, thisSearchN)
                 if matches:
-                    nC += difflib.SequenceMatcher(None, n, matches[0]).ratio()
+                    nameChance = difflib.SequenceMatcher(None, n, matches[0]).ratio()
+                    if nameChance > 0.85:
+                        nC += nameChance * 4
+                    else:
+                        nC += nameChance * 2
+                    break
+                if difflib.SequenceMatcher(None, n, search).ratio() > 0.9:
+                    nC += 2
+
                     # thisSearchN.remove(matches[0])
             for e in extras:
                 matches: list = difflib.get_close_matches(e, thisSearchE)
@@ -368,10 +376,13 @@ class DataScientist:
                 if ifBreak: break
             finalCount: float = nC + eC + cC
             if finalCount > 0:
-                joinedName: str = " ".join(name)
-                movieCount = difflib.SequenceMatcher(None, joinedName, search).ratio()
-                if joinedName.__contains__(search):
-                    movieCount += 1
+                joinedName: str = " ".join(name).lower()
+                movieCount = 0
+                # if joinedName.__contains__(search):
+                #     movieCount += 1
+                if nC > 0.8:
+                    nC *= 2
+                movieCount += nC
                 movieCount += difflib.SequenceMatcher(None, extras, search).ratio()
                 movieCount += cC
                 matchName, addCount = self.__checkSCEntryDiff(search, joinedName)
@@ -380,6 +391,19 @@ class DataScientist:
                     if matchPercent >= 0.72:  # spider percent
                         movieCount += addCount * matchPercent
 
+                if eC > 0.4:
+                    cloudBe = difflib.SequenceMatcher(None, search, extraSearchs[c].lower()).get_matching_blocks()
+                    addeC = 0
+                    for m in cloudBe:
+                        addeC += m.size if m.size > 5 else 0
+                    addeC /= len(extraSearchs[c])
+                    addeC *= 4
+                    if addeC >= 1.1:
+                        movieCount += addeC
+                    else:
+                        movieCount += eC if eC < 1.2 else 1
+                else:
+                    movieCount += eC if eC <= 0.4 else 0.3
                 if not result.__contains__(movieCount):
                     result[movieCount] = []
                 result[movieCount].append(self.get("collection." + str(index["id"][c])))
