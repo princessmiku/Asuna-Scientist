@@ -46,7 +46,7 @@ class DRec:
         if self.currentPage + amount > self.maxPages: return False
         self.currentPage += amount
         self.currentIndex += self.maxShows * amount
-        if self.currentIndex > self.lenOfData: self.currentIndex = self.lenOfData
+        if self.currentIndex > self.lenOfData: self.currentIndex = self.lenOfData - 1
         return True
 
     # previous page, or previous page with skip xxx pages
@@ -56,7 +56,7 @@ class DRec:
         :param amount: amount of skips, normal 1, 1 = next page
         :return: is successful, nice to have but it can be useless
         """
-        if self.currentPage + amount < 0: return False
+        if self.currentPage - amount < 0: return False
         self.currentPage -= amount
         self.currentIndex -= self.maxShows * amount
         if self.currentIndex < 0: self.currentIndex = 0
