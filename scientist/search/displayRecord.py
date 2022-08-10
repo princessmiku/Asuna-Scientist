@@ -3,10 +3,11 @@
 
 """
 # Own
-from .collection import Collection
+from scientist.datahandler.dtos_S2Data import Collection
 
 # python stuff
 import math
+
 
 
 class DRec:

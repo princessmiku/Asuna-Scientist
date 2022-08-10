@@ -39,7 +39,7 @@ Vor dem Starten des Scripts muss die Datenbank bereits erstellt worden sein.
 
 ````python
 import scientist
-from scientist.databaseConnectorSQLite import DCSqlite # example database connector
+from scientist import DCSqlite  # example database connector
 
 dbConnector = DCSqlite("./mydb.db")
 sc = scientist.DataScientist(dbConnector)
@@ -58,14 +58,15 @@ Es ist nur ein Logger pro Python Script möglich in der Library, beim Ändern we
 **Beispiel**
 
 ````python
-from scientist.logSettings import LogSettings
+from scientist import LogSettings
 import logging
+
 logSet = LogSettings(
-    loggerName = "logger scientist",
-    filepath = "./s2.log", 
+    loggerName="logger scientist",
+    filepath="./s2.log",
     filemode="a",
     textFmt="[%(asctime)s] [%(levelname)s]: %(message)s >> %(pathname)s:%(lineno)d",
-    dateFmt="%Y-%m-%d %H:%M:%S", 
+    dateFmt="%Y-%m-%d %H:%M:%S",
     level=logging.DEBUG
 )
 ````
@@ -178,15 +179,14 @@ Ein Record beinhaltet alle gefundenen Ergebnisse sortiert nach Wichtigkeit, dies
 
 **Wichtige & Interessante Funktionen**
 
-| Funktion | Beschreibung | Optionale Parameter
-| ---- | ---- | ---- | 
-| `setResult(index)` | Setze welches Ergebnis gewählt wurde | |
-| `clearResult()` | Setze das Ergebnis wieder auf 0 | |
-| `getResult()` | Bekomme das Ergebnis als `Collection` | |
-| `getUser()` | Bekomme den User des Records | |
-| `setSearchText()` | Überschreibe den Text mit dem man gesucht hatte `match > search` | |
-| `getAsDRec()` | Bekomme den Record als `DRec` um dieses benutzerfreundlich anzuzeigen | `maxShows = int`
-
+| Funktion           | Beschreibung                                                          | Optionale Parameter |
+|--------------------|-----------------------------------------------------------------------|---------------------| 
+| `setResult(index)` | Setze welches Ergebnis gewählt wurde                                  |                     |
+| `clearResult()`    | Setze das Ergebnis wieder auf 0                                       |                     |
+| `getResult()`      | Bekomme das Ergebnis als `Collection`                                 |                     |
+| `getUser()`        | Bekomme den User des Records                                          |                     |
+| `setSearchText()`  | Überschreibe den Text mit dem man gesucht hatte `match > search`      |                     |
+| `getAsDRec()`      | Bekomme den Record als `DRec` um dieses benutzerfreundlich anzuzeigen | `maxShows = int`    |
 
 ### DRec - Display Record
 
@@ -206,13 +206,13 @@ Es ist möglich über ein der 4 Möglichkeiten zu initialisieren.
 
 **Funktionen**
 
-| Funktion | Beschreibung | optionale Parameter | Rückgabe |
-| ---- | ---- | ---- | ---- |
-| `get()` | Bekomme die aktuelle Seiten Elemente | | Liste mit Collections |
-| `nextPage()` | Gehe auf die Nächste Seite | `amount = 1` gebe an wie viele Seiten geskippt werden sollen | `bool`
-| `previousPage()` | Gehe auf die Seite davor | `amount = 1` gebe an wie viele Seiten geskippt werden sollen | `bool` |
-| `addIndex()` | - | `amount = 1` wie viel soll hinzugefügt werden | `bool` |
-| `removeIndex()` | - | `amount = 1` wie viel soll entfernt werden | `bool` |
+| Funktion         | Beschreibung                         | optionale Parameter                                          | Rückgabe              |
+|------------------|--------------------------------------|--------------------------------------------------------------|-----------------------|
+| `get()`          | Bekomme die aktuelle Seiten Elemente |                                                              | Liste mit Collections |
+| `nextPage()`     | Gehe auf die Nächste Seite           | `amount = 1` gebe an wie viele Seiten geskippt werden sollen | `bool`                
+| `previousPage()` | Gehe auf die Seite davor             | `amount = 1` gebe an wie viele Seiten geskippt werden sollen | `bool`                |
+| `addIndex()`     | -                                    | `amount = 1` wie viel soll hinzugefügt werden                | `bool`                |
+| `removeIndex()`  | -                                    | `amount = 1` wie viel soll entfernt werden                   | `bool`                |
 
 
 Der Index ist die Zahl des ersten Elementes ab den dann die angezeigten Elemente abgezählt werden, es ist möglich diesen zu versetzten.
