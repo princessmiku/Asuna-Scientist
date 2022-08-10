@@ -376,12 +376,13 @@ class DataScientist:
                         break
                 if ifBreak: break
             finalCount: float = nC + eC + cC
-            if finalCount > 0:
-                joinedName: str = " ".join(name).lower()
+            if finalCount > 0.2:
+                joinedName: str = " ".join(name)
                 movieCount = difflib.SequenceMatcher(None, search, joinedName).ratio()
+                if movieCount > 0.85:
+                    movieCount *= 2
                 if joinedName.__contains__(search):
                     movieCount += 1
-                movieCount += nC
                 movieCount += difflib.SequenceMatcher(None, extras, search).ratio()
                 movieCount += cC
                 matchName, addCount = self.__checkSCEntryDiff(search, joinedName)
@@ -389,6 +390,7 @@ class DataScientist:
                     matchPercent = difflib.SequenceMatcher(None, joinedName, matchName).ratio()
                     if matchPercent >= 0.72:  # spider percent
                         movieCount += addCount * matchPercent
+
 
                 if eC > 0.4:
                     cloudBe = difflib.SequenceMatcher(None, search, extraSearchs[c].lower()).get_matching_blocks()
