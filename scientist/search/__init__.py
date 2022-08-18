@@ -408,8 +408,14 @@ class DataScientist:
                 if not result.__contains__(movieCount):
                     result[movieCount] = []
                 result[movieCount].append(self.get("collection." + str(index["id"][c])))
+        highestMovCou = max(result.keys())
         result = dict(pyCollections.OrderedDict(sorted(result.items(), reverse=True)))
-        return Record(search, [item for sublist in result.values() for item in sublist], _user)
+        return Record(
+            search,
+            [item for sublist in result.values() for item in sublist],
+            _user,
+            highestRevel=highestMovCou
+        )
 
     # searching
     def matchNSLD(self, search: str) -> Record:
