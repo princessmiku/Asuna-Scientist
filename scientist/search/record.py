@@ -17,12 +17,13 @@ class Record:
     logger: logging.Logger = None
 
     # init record
-    def __init__(self, searchText: str, data: list, user: User, ignoredCollectionsIndex=None):
+    def __init__(self, searchText: str, data: list, user: User, ignoredCollectionsIndex=None, highestRevel: int = 0):
         self.searchText: str = searchText
         self.data: list = data
         self.user: User = user
         self.isResult: bool = False
         self.result: int = 0
+        self.highestRevel = highestRevel
         if ignoredCollectionsIndex is None:
             ignoredCollectionsIndex: list = []
         self.ignoredCollectionsIndex: list = ignoredCollectionsIndex
