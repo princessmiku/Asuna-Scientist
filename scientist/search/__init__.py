@@ -306,7 +306,7 @@ class DataScientist:
         self.__addCCEntry(_record.searchText, result.category)
 
     # searching
-    def match(self, search: str, _user: [User, int] = None, needCount: int = 0) -> Record:
+    def match(self, search: str, _user: [User, int] = None, needCount: float = 0) -> Record:
         """
         Search in your data for the best matches, contains self learning
         :param search: Search text
