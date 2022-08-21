@@ -306,7 +306,7 @@ class DataScientist:
         self.__addCCEntry(_record.searchText, result.category)
 
     # searching
-    def match(self, search: str, _user: [User, int] = None) -> Record:
+    def match(self, search: str, _user: [User, int] = None, needCount: int = 0) -> Record:
         """
         Search in your data for the best matches, contains self learning
         :param search: Search text
@@ -392,7 +392,7 @@ class DataScientist:
                         movieCount += addCount * matchPercent
 
 
-                if eC > 0.4:
+                if eC > 0.5:
                     cloudBe = difflib.SequenceMatcher(None, search, extraSearchs[c].lower()).get_matching_blocks()
                     addeC = 0
                     for m in cloudBe:
@@ -405,6 +405,7 @@ class DataScientist:
                         movieCount += eC if eC < 1.2 else 1
                 else:
                     movieCount += eC if eC <= 0.4 else 0.3
+                if movieCount < needCount: continue
                 if not result.__contains__(movieCount):
                     result[movieCount] = []
                 result[movieCount].append(self.get("collection." + str(index["id"][c])))
